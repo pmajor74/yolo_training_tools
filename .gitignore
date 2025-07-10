@@ -1,6 +1,10 @@
 /auto_annotation_demo
-*.rar
 *.jpg
+!tutorial_test_set
+!tutorial_test_set/barcode_set
+!/tutorial_test_set/barcode_set/*.jpg
+*.rar
+*.pt
 auto_annotation_session.json
 /mini_img_set
 validation_output/
