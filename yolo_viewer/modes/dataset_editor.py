@@ -173,7 +173,7 @@ class DatasetEditorMode(BaseMode):
         canvas_info_layout.addStretch()
         
         # Drawing tools hint
-        hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ Right-click to delete")
+        hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class")
         hint_label.setStyleSheet("color: #888888; font-size: 12px;")
         canvas_info_layout.addWidget(hint_label)
         

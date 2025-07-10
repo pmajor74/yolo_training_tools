@@ -643,6 +643,23 @@ class AnnotationCanvas(QGraphicsView):
             self.undo()
         elif event.key() == Qt.Key.Key_Y and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
             self.redo()
+        # Handle number keys 0-9 for class selection when annotations are selected
+        elif event.key() >= Qt.Key.Key_0 and event.key() <= Qt.Key.Key_9 and not event.modifiers():
+            # Get the number pressed (0-9)
+            class_id = event.key() - Qt.Key.Key_0
+            
+            # Check if we have selected annotations and this class ID exists
+            selected_annotations = self.get_selected_annotations()
+            if selected_annotations:
+                # Check if this class_id is valid (exists in our class names)
+                if class_id in self._class_names:
+                    # Update all selected annotations to this class
+                    for item in self._annotation_items.values():
+                        if item.isSelected():
+                            item.annotation.class_id = class_id
+                            item._update_appearance()
+                            item.update()  # Force redraw
+                            self.annotationModified.emit(item.annotation)
         else:
             super().keyPressEvent(event)
     

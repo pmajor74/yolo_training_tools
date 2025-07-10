@@ -449,7 +449,7 @@ class FolderBrowserMode(BaseMode):
         layout.addLayout(header_layout)
         
         # Drawing hint (for edit mode)
-        self._hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ Right-click to delete | 🔍 Ctrl+scroll to zoom")
+        self._hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class | 🔍 Ctrl+scroll to zoom")
         self._hint_label.setStyleSheet("color: #888888; font-size: 12px;")
         layout.addWidget(self._hint_label)
         

@@ -841,6 +841,11 @@ class UIBuilder(QObject):
         
         layout.addLayout(header_layout)
         
+        # Drawing tools hint
+        hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class")
+        hint_label.setStyleSheet("color: #888888; font-size: 12px;")
+        layout.addWidget(hint_label)
+        
         # Annotation canvas
         self.annotation_canvas = AnnotationCanvas()
         layout.addWidget(self.annotation_canvas)
