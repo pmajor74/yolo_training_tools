@@ -9,13 +9,19 @@ This particular tool was designed to completely run from your PC. In environment
 ## Author
 Patrick Major
 
+## Tutorial
+- [Tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
+
+## Upcoming Features
+- N8N integration examples
+- Video Auto-annotation tutorial
+
 ## Contributions
 Just drop me a line at codingwithoutbugs@gmail.com and let me now how you're using this. 
 
 # Note
 While this should work on a linux based system, it has only been tested using Windows.
 
-If you have a GPU
 ### GPU Support
 
 ## 🌟 Features
@@ -33,7 +39,6 @@ If you have a GPU
 
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
-- [Tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 - [Features Overview](#-features-overview)
   - [Auto-Annotation Mode](#auto-annotation-mode) - Main quick dataset annotation mode.
   - [Model Management](#model-management)
