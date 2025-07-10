@@ -1,0 +1,1 @@
+"""YOLO Dataset Viewer PyQt6 Package."""

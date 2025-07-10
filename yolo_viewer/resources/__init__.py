@@ -1,0 +1,1 @@
+"""Resources for YOLO Dataset Viewer."""

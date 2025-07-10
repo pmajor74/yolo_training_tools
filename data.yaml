@@ -1,0 +1,11 @@
+# YOLO Dataset Configuration
+# Dataset root directory (relative to this file or absolute path)
+
+names:
+  0: QR
+  1: DATAMATRIX
+nc: 2
+train: train
+val: val
+test: test
+path: working

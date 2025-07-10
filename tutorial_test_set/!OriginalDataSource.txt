@@ -1,0 +1,3 @@
+This was original sourced from the following dataset. It is the v1 of the dataset which had more images to work with. V2 became highly unbalanced so I archived it with this project for the tutorial.
+
+https://www.kaggle.com/datasets/coccodev/2d-data-matrix-code
