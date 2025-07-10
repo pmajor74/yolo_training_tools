@@ -141,6 +141,8 @@ class FolderBrowserMode(BaseMode):
         self._current_image_path: Optional[Path] = None
         self._class_names: Dict[int, str] = {}
         self._modified_files: Set[str] = set()
+        self._pending_annotations: Dict[str, List[Annotation]] = {}  # Store pending changes per image
+        self._original_yolo_annotations: Dict[str, List[tuple]] = {}  # Store original YOLO format to preserve precision
         self._current_filter = ImageFilter.ALL
         self._all_image_paths: List[Path] = []
         self._annotated_paths: Set[str] = set()
@@ -510,6 +512,7 @@ class FolderBrowserMode(BaseMode):
             
             # Check which images have annotations
             self._annotated_paths.clear()
+            self._original_yolo_annotations.clear()  # Clear cached original annotations
             annotations_dict = {}
             
             for img_path in self._all_image_paths:
@@ -659,9 +662,9 @@ class FolderBrowserMode(BaseMode):
     @pyqtSlot(str)
     def _on_image_selected(self, image_path: str):
         """Handle image selection."""
-        # Save current annotations before switching (only in edit mode)
+        # Store current annotations in memory before switching (only in edit mode)
         if not self._inference_mode and self._current_image_path and self._current_image_path != Path(image_path):
-            self._save_current_annotations()
+            self._store_current_annotations()
         
         # Load new image
         self._current_image_path = Path(image_path)
@@ -681,29 +684,37 @@ class FolderBrowserMode(BaseMode):
             # Update canvas for editing
             self._canvas.load_image(pixmap)
             
-            # Prepare canvas annotations combining saved annotations and detections
+            # Prepare canvas annotations
             canvas_annotations = []
             
-            # First, load saved annotations if they exist
-            ann_path = get_annotation_path(self._current_image_path)
-            if ann_path.exists():
-                annotations = parse_yolo_annotation(ann_path)
-                
-                # Convert to canvas annotations
-                for ann in annotations:
-                    class_id, x_center, y_center, width, height = ann
+            # Check if we have pending annotations for this image
+            if str(self._current_image_path) in self._pending_annotations:
+                # Use pending annotations
+                canvas_annotations = self._pending_annotations[str(self._current_image_path)]
+            else:
+                # Load saved annotations if they exist
+                ann_path = get_annotation_path(self._current_image_path)
+                if ann_path.exists():
+                    annotations = parse_yolo_annotation(ann_path)
                     
-                    # Denormalize to pixel coordinates
-                    x, y, w, h = denormalize_bbox(
-                        x_center, y_center, width, height,
-                        pixmap.width(), pixmap.height()
-                    )
+                    # Store original YOLO format to preserve precision
+                    self._original_yolo_annotations[str(self._current_image_path)] = annotations.copy()
                     
-                    canvas_ann = Annotation(
-                        class_id=class_id,
-                        rect=QRectF(x, y, w, h)
-                    )
-                    canvas_annotations.append(canvas_ann)
+                    # Convert to canvas annotations
+                    for ann in annotations:
+                        class_id, x_center, y_center, width, height = ann
+                        
+                        # Denormalize to pixel coordinates
+                        x, y, w, h = denormalize_bbox(
+                            x_center, y_center, width, height,
+                            pixmap.width(), pixmap.height()
+                        )
+                        
+                        canvas_ann = Annotation(
+                            class_id=class_id,
+                            rect=QRectF(x, y, w, h)
+                        )
+                        canvas_annotations.append(canvas_ann)
             
             # Then, add filtered detections if we have them (so user can edit inference results)
             # This allows users to refine the detection results
@@ -803,18 +814,100 @@ class FolderBrowserMode(BaseMode):
             self._gallery.clear_selection()
             self._update_ui_state()
     
-    def _save_current_annotations(self):
-        """Save annotations for current image."""
+    def _store_current_annotations(self):
+        """Store current annotations in memory without saving to disk."""
         if not self._current_image_path:
             return
         
-        annotations = self._canvas.get_annotations()
+        current_annotations = self._canvas.get_annotations()
+        
+        # Check if annotations have actually changed
+        has_changed = False
+        
+        # First check if we already have pending annotations for this image
+        if str(self._current_image_path) in self._pending_annotations:
+            # Already marked as modified, just update
+            self._pending_annotations[str(self._current_image_path)] = current_annotations
+            has_changed = True
+        else:
+            # Compare with saved annotations to see if there are changes
+            ann_path = get_annotation_path(self._current_image_path)
+            if ann_path.exists():
+                saved_annotations = parse_yolo_annotation(ann_path)
+                # Compare counts first
+                if len(current_annotations) != len(saved_annotations):
+                    has_changed = True
+                else:
+                    # Compare each annotation (accounting for potential reordering)
+                    pixmap = self._canvas._pixmap_item.pixmap()
+                    current_yolo = []
+                    for ann in current_annotations:
+                        yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
+                        current_yolo.append(yolo_ann)
+                    
+                    # Sort both lists for comparison
+                    current_yolo.sort()
+                    saved_annotations.sort()
+                    
+                    # Compare with tolerance for floating point precision
+                    for curr, saved in zip(current_yolo, saved_annotations):
+                        if curr[0] != saved[0]:  # Different class
+                            has_changed = True
+                            break
+                        # Check coordinates with small tolerance
+                        for i in range(1, 5):
+                            if abs(curr[i] - saved[i]) > 1e-6:
+                                has_changed = True
+                                break
+                        if has_changed:
+                            break
+            else:
+                # No saved file, so any annotations mean changes
+                has_changed = len(current_annotations) > 0
+        
+        # Only store and mark as modified if actually changed
+        if has_changed:
+            self._pending_annotations[str(self._current_image_path)] = current_annotations
+            self._modified_files.add(str(self._current_image_path))
+            
+            # Update gallery to show modified state
+            if current_annotations:
+                yolo_annotations = []
+                pixmap = self._canvas._pixmap_item.pixmap()
+                for ann in current_annotations:
+                    yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
+                    yolo_annotations.append(yolo_ann)
+                
+                self._gallery.update_image_annotations(
+                    str(self._current_image_path),
+                    yolo_annotations,
+                    is_modified=True
+                )
+            else:
+                self._gallery.update_image_annotations(
+                    str(self._current_image_path),
+                    [],
+                    is_modified=True
+                )
+    
+    def _save_current_annotations(self):
+        """Save annotations for current image to disk."""
+        if not self._current_image_path:
+            return
+        
+        # Get annotations from canvas or pending annotations
+        if str(self._current_image_path) in self._pending_annotations:
+            annotations = self._pending_annotations[str(self._current_image_path)]
+        else:
+            annotations = self._canvas.get_annotations()
+        
         ann_path = get_annotation_path(self._current_image_path)
         
         if annotations:
             # Convert to YOLO format
             yolo_annotations = []
-            pixmap = self._canvas._pixmap_item.pixmap()
+            # Need to get image dimensions
+            pixmap = QPixmap(str(self._current_image_path))
             
             for ann in annotations:
                 yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
@@ -831,13 +924,14 @@ class FolderBrowserMode(BaseMode):
                 ann_path.unlink()
             self._annotated_paths.discard(str(self._current_image_path))
         
-        # Remove from modified set
+        # Remove from modified set and pending annotations
         self._modified_files.discard(str(self._current_image_path))
+        self._pending_annotations.pop(str(self._current_image_path), None)
         
         # Update gallery to show saved state
         if annotations:
             yolo_annotations = []
-            pixmap = self._canvas._pixmap_item.pixmap()
+            pixmap = QPixmap(str(self._current_image_path))
             for ann in annotations:
                 yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
                 yolo_annotations.append(yolo_ann)
@@ -864,17 +958,102 @@ class FolderBrowserMode(BaseMode):
     
     def _save_all_annotations(self):
         """Save all modified annotations."""
-        # Save current image first
+        # Store current annotations first
         if self._current_image_path:
-            self._save_current_annotations()
+            self._store_current_annotations()
         
-        saved_count = len(self._modified_files)
+        saved_count = 0
+        
+        # Save all pending annotations
+        for image_path_str in list(self._pending_annotations.keys()):
+            image_path = Path(image_path_str)
+            annotations = self._pending_annotations[image_path_str]
+            ann_path = get_annotation_path(image_path)
+            
+            if annotations:
+                # Check if we should use original YOLO format
+                # This happens when annotations match the original but were marked as modified
+                use_original = False
+                if image_path_str in self._original_yolo_annotations:
+                    original = self._original_yolo_annotations[image_path_str]
+                    if len(annotations) == len(original):
+                        # Quick check - if counts match, do detailed comparison
+                        pixmap = QPixmap(image_path_str)
+                        current_yolo = []
+                        for ann in annotations:
+                            yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
+                            current_yolo.append(yolo_ann)
+                        
+                        # Sort for comparison
+                        current_yolo.sort()
+                        original_sorted = sorted(original)
+                        
+                        # Check if essentially the same
+                        matches = True
+                        for curr, orig in zip(current_yolo, original_sorted):
+                            if curr[0] != orig[0]:  # Different class
+                                matches = False
+                                break
+                            # Check coordinates with tolerance
+                            for i in range(1, 5):
+                                if abs(curr[i] - orig[i]) > 1e-4:
+                                    matches = False
+                                    break
+                            if not matches:
+                                break
+                        
+                        use_original = matches
+                
+                if use_original:
+                    # Use original to preserve precision
+                    yolo_annotations = self._original_yolo_annotations[image_path_str]
+                else:
+                    # Convert to YOLO format
+                    yolo_annotations = []
+                    pixmap = QPixmap(image_path_str)
+                    
+                    for ann in annotations:
+                        yolo_ann = ann.to_yolo_format(pixmap.width(), pixmap.height())
+                        yolo_annotations.append(yolo_ann)
+                
+                # Save to file
+                save_yolo_annotation(ann_path, yolo_annotations)
+                
+                # Mark as annotated
+                self._annotated_paths.add(image_path_str)
+            else:
+                # No annotations, remove file if it exists
+                if ann_path.exists():
+                    ann_path.unlink()
+                self._annotated_paths.discard(image_path_str)
+            
+            # Update gallery to show saved state
+            if annotations:
+                self._gallery.update_image_annotations(
+                    image_path_str,
+                    yolo_annotations,
+                    is_modified=False
+                )
+            else:
+                self._gallery.update_image_annotations(
+                    image_path_str,
+                    [],
+                    is_modified=False
+                )
+            
+            saved_count += 1
+        
+        # Clear pending annotations and modified files
+        self._pending_annotations.clear()
         self._modified_files.clear()
+        # Don't clear original annotations - they're still valid for unchanged files
         
         self._update_ui_state()
         self._update_progress()
         
-        # Note: No need to update class statistics here as _save_current_annotations already does it
+        # Update class statistics after saving
+        if self._class_names:
+            self._update_class_statistics()
         
         self.annotationsSaved.emit(saved_count)
         self.statusMessage.emit(f"Saved {saved_count} annotation files", 3000)
@@ -1219,11 +1398,16 @@ class FolderBrowserMode(BaseMode):
             self._inference_thread.stop()
             self._inference_thread.wait()
         
-        # Check for unsaved changes
-        if self._modified_files:
+        # Store current annotations if needed
+        if self._current_image_path and self._canvas.get_annotations():
+            self._store_current_annotations()
+        
+        # Check for unsaved changes (both modified files and pending annotations)
+        if self._modified_files or self._pending_annotations:
+            unsaved_count = len(self._modified_files) + len(self._pending_annotations)
             reply = QMessageBox.question(
                 self, "Unsaved Changes",
-                f"You have {len(self._modified_files)} unsaved changes.\n\nSave before leaving?",
+                f"You have {unsaved_count} unsaved changes.\n\nSave before leaving?",
                 QMessageBox.StandardButton.Save |
                 QMessageBox.StandardButton.Discard |
                 QMessageBox.StandardButton.Cancel
@@ -1242,7 +1426,21 @@ class FolderBrowserMode(BaseMode):
     
     def has_unsaved_changes(self) -> bool:
         """Check if mode has unsaved changes."""
-        return bool(self._modified_files)
+        # Store current annotations if needed
+        if self._current_image_path and self._canvas.get_annotations():
+            current_annotations = self._canvas.get_annotations()
+            # Check if current annotations are different from saved
+            ann_path = get_annotation_path(self._current_image_path)
+            if ann_path.exists():
+                saved_annotations = parse_yolo_annotation(ann_path)
+                # Compare counts as a simple check
+                if len(current_annotations) != len(saved_annotations):
+                    self._store_current_annotations()
+            elif current_annotations:
+                # Has annotations but no saved file
+                self._store_current_annotations()
+        
+        return bool(self._modified_files) or bool(self._pending_annotations)
     
     def save_changes(self) -> bool:
         """Save any pending changes."""
@@ -1254,35 +1452,9 @@ class FolderBrowserMode(BaseMode):
             return False
     
     def eventFilter(self, obj, event):
-        """Filter events to save annotations when focus is lost."""
-        # Check if UI components exist before accessing them
-        if hasattr(self, '_canvas') and obj == self._canvas:
-            if event.type() == QEvent.Type.FocusOut:
-                # Canvas lost focus, save current annotations
-                if self._current_image_path and str(self._current_image_path) in self._modified_files:
-                    self._save_current_annotations()
-                    self._update_progress()
-        elif hasattr(self, '_gallery') and obj == self._gallery:
-            if event.type() == QEvent.Type.MouseButtonPress:
-                # Gallery clicked, save current annotations before potential image change
-                if self._current_image_path and str(self._current_image_path) in self._modified_files:
-                    self._save_current_annotations()
-                    self._update_progress()
-        
+        """Filter events for the gallery."""
+        # We no longer auto-save annotations, just pass the event through
         return super().eventFilter(obj, event)
-    
-    def mousePressEvent(self, event):
-        """Handle mouse press events to save annotations when clicking outside canvas."""
-        # Check if canvas exists and click is outside the canvas area
-        if hasattr(self, '_canvas'):
-            canvas_rect = self._canvas.geometry()
-            if not canvas_rect.contains(event.pos()):
-                # Click is outside canvas, save annotations
-                if self._current_image_path and str(self._current_image_path) in self._modified_files:
-                    self._save_current_annotations()
-                    self._update_progress()
-        
-        super().mousePressEvent(event)
     
     def keyPressEvent(self, event):
         """Handle key press events."""

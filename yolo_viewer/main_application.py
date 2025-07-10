@@ -347,12 +347,37 @@ class MainApplication(QMainWindow):
     
     def closeEvent(self, event):
         """Handle close event."""
+        # Check for unsaved changes in all modes
+        unsaved_modes = []
+        for mode, widget in self.mode_widgets.items():
+            if hasattr(widget, 'has_unsaved_changes') and widget.has_unsaved_changes():
+                mode_name = MODE_NAMES.get(mode, str(mode))
+                unsaved_modes.append(mode_name)
+        
+        if unsaved_modes:
+            # Show warning about unsaved changes
+            reply = QMessageBox.question(
+                self, "Unsaved Changes",
+                f"The following modes have unsaved changes:\n"
+                f"{', '.join(unsaved_modes)}\n\n"
+                f"Do you want to save before closing?",
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
+                QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Save
+            )
+            
+            if reply == QMessageBox.StandardButton.Save:
+                # Save changes in all modes
+                for mode, widget in self.mode_widgets.items():
+                    if hasattr(widget, 'save_changes'):
+                        widget.save_changes()
+            elif reply == QMessageBox.StandardButton.Cancel:
+                event.ignore()
+                return
+        
         # Save geometry
         self.settings.set_window_geometry(self.saveGeometry())
-        
-        # Check for unsaved changes (placeholder)
-        # TODO: Implement unsaved changes check
-        
         event.accept()
     
     # Slots
