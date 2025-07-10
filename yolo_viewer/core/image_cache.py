@@ -4,6 +4,7 @@ from typing import Dict, Optional, List, Tuple, Any
 from pathlib import Path
 import numpy as np
 from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtGui import QPixmap
 import cv2
 
 
@@ -13,25 +14,17 @@ class ImageCache(QObject):
     # Signals
     cacheUpdated = pyqtSignal(int, int)  # num_images, size_mb
     
-    _instance = None
     _max_cache_size_mb = 500  # Maximum cache size in MB
     
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self):
-        if self._initialized:
-            return
         super().__init__()
+        
+        # Initialize instance variables
         self._image_cache: Dict[str, np.ndarray] = {}
         self._pixmap_cache: Dict[str, QPixmap] = {}
         self._thumbnail_cache: Dict[str, QPixmap] = {}
         self._cache_order: List[str] = []
         self._inference_cache: Optional[Dict[str, Any]] = None  # For inference mode data
-        self._initialized = True
     
     def load_image(self, image_path: str) -> Optional[np.ndarray]:
         """

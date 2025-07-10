@@ -1,7 +1,7 @@
 """Settings manager using QSettings for persistence."""
 
 from typing import Any, Optional
-from PyQt6.QtCore import QSettings, QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QSettings, pyqtSignal
 from .constants import ORGANIZATION, APP_NAME, DEFAULT_CONFIDENCE, DEFAULT_IOU
 
 
@@ -11,20 +11,11 @@ class SettingsManager(QObject):
     # Signals
     settingChanged = pyqtSignal(str, object)  # key, value
     
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self):
-        if self._initialized:
-            return
         super().__init__()
+        
+        # Initialize instance variables
         self._settings = QSettings(ORGANIZATION, APP_NAME)
-        self._initialized = True
         
         # Set defaults if not present
         self._set_defaults()

@@ -13,6 +13,9 @@ Patrick Major
 - [Video Tutorial Showing How to Annotate, Train and Auto-annotate for yolo models](https://youtu.be/Jt-mAiah-sc)
 - [Text based tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 
+## Python Versions
+- Python 3.10 to Pyton 3.13 have been tested working (on Windows). 
+- Linux testing pending.
 
 ## Upcoming Features
 - N8N integration examples

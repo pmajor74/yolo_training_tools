@@ -1,10 +1,11 @@
 """Singleton model cache for YOLO models."""
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from pathlib import Path
-from ultralytics import YOLO
 from PyQt6.QtCore import QObject, pyqtSignal
-import torch
+
+if TYPE_CHECKING:
+    from ultralytics import YOLO
 
 
 class ModelCache(QObject):
@@ -14,27 +15,19 @@ class ModelCache(QObject):
     modelLoaded = pyqtSignal(str)  # Emits model path when loaded
     modelCleared = pyqtSignal()
     
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self):
-        if self._initialized:
-            return
         super().__init__()
-        self._model: Optional[YOLO] = None
+        
+        # Initialize instance variables
+        self._model = None  # Type annotation removed to avoid import
         self._model_path: Optional[str] = None
         self._model_info: Dict[str, Any] = {}
         self._device: Optional[str] = None
-        self._initialized = True
     
     def _get_best_device(self) -> str:
         """Detect and return the best available device."""
         try:
+            import torch
             if torch.cuda.is_available():
                 return "cuda"
             elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
@@ -55,6 +48,9 @@ class ModelCache(QObject):
             bool: True if successful, False otherwise
         """
         try:
+            from ultralytics import YOLO
+            import torch
+            
             # Detect best device
             self._device = self._get_best_device()
             
@@ -101,7 +97,7 @@ class ModelCache(QObject):
         self._device = None
         self.modelCleared.emit()
     
-    def get_model(self) -> Optional[YOLO]:
+    def get_model(self) -> Optional['YOLO']:
         """Get the cached model."""
         return self._model
     

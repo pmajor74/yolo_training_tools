@@ -30,13 +30,23 @@ class MainApplication(QMainWindow):
     """Main application window."""
     
     def __init__(self):
-        super().__init__()
+        try:
+            super().__init__()
+        except Exception as e:
+            print(f"Failed to initialize QMainWindow: {e}")
+            raise
         
-        # Initialize singletons
-        self.model_cache = ModelCache()
-        self.settings = SettingsManager()
-        self.image_cache = ImageCache()
-        self.dataset_manager = DatasetManager()
+        # Initialize singletons with error handling
+        try:
+            self.model_cache = ModelCache()
+            self.settings = SettingsManager()
+            self.image_cache = ImageCache()
+            self.dataset_manager = DatasetManager()
+        except Exception as e:
+            print(f"Failed to initialize singletons: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
         
         # Mode widgets (will be populated as we implement them)
         self.mode_widgets = {}
@@ -556,12 +566,25 @@ class MainApplication(QMainWindow):
 def main():
     """Main entry point."""
     import os
-    from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
+    from PyQt6.QtCore import qInstallMessageHandler, QtMsgType, QCoreApplication
+    
+    # Python 3.13 compatibility: Set attributes before creating QApplication
+    if sys.version_info >= (3, 13):
+        # Disable some problematic features for Python 3.13
+        os.environ['QT_ENABLE_HIGHDPI_SCALING'] = '0'
+        os.environ['QT_AUTO_SCREEN_SCALE_FACTOR'] = '0'
     
     # Note: We're not setting AA_ShareOpenGLContexts as it causes issues
     # and is typically only needed for specific OpenGL use cases
     
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
+    except RuntimeError as e:
+        print(f"Failed to create QApplication: {e}")
+        print("This might be a PyQt6/Python 3.13 compatibility issue.")
+        print("Please ensure PyQt6 is properly installed for your Python version.")
+        sys.exit(1)
+    
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("YOLOTools")
     
@@ -587,10 +610,25 @@ def main():
     qInstallMessageHandler(qt_message_handler)
     
     # Set Windows style to ensure proper arrow rendering on Windows
-    QApplication.setStyle("Windows")
+    # Python 3.13 fix: Only set style on Windows, and handle potential failures
+    if sys.platform == 'win32':
+        try:
+            QApplication.setStyle("Windows")
+        except Exception as e:
+            print(f"Warning: Failed to set Windows style: {e}")
     
     # Create main window but don't show it yet
-    window = MainApplication()
+    try:
+        window = MainApplication()
+    except Exception as e:
+        print(f"Failed to create MainApplication: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\nThis might be due to PyQt6/Python 3.13 compatibility issues.")
+        print("Please try:")
+        print("1. Reinstalling PyQt6: pip install --force-reinstall PyQt6")
+        print("2. Using Python 3.10-3.12 instead")
+        sys.exit(1)
     
     # Ensure the window has a valid size before showing
     if window.size().width() == 0 or window.size().height() == 0:

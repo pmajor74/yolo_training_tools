@@ -1,9 +1,11 @@
 """Core utilities and singleton managers for YOLO Dataset Viewer PyQt6."""
 
-from .model_cache import ModelCache
-from .settings_manager import SettingsManager
-from .image_cache import ImageCache
-from .dataset_manager import DatasetManager
+from .singletons import (
+    get_model_cache as ModelCache,
+    get_settings_manager as SettingsManager,
+    get_image_cache as ImageCache,
+    get_dataset_manager as DatasetManager
+)
 from .constants import *
 
 __all__ = ['ModelCache', 'SettingsManager', 'ImageCache', 'DatasetManager']

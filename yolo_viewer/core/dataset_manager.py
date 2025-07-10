@@ -17,20 +17,8 @@ class DatasetManager(QObject):
     datasetLoaded = pyqtSignal(Path)  # Emitted when a new dataset is loaded
     datasetUpdated = pyqtSignal()  # Emitted when dataset info is updated
     
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-    
     def __init__(self):
-        if self._initialized:
-            return
-            
         super().__init__()
-        self._initialized = True
         
         # Dataset information
         self._yaml_path: Optional[Path] = None
