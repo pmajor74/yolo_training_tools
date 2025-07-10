@@ -11,7 +11,7 @@ Patrick Major
 
 ## Tutorial
 - [Video Tutorial Showing How to Annotate, Train and Auto-annotate for yolo models](https://youtu.be/Jt-mAiah-sc)
-- [Tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
+- [Text based tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 
 
 ## Upcoming Features
