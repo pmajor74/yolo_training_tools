@@ -33,6 +33,7 @@ If you have a GPU
 
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 - [Features Overview](#-features-overview)
   - [Auto-Annotation Mode](#auto-annotation-mode) - Main quick dataset annotation mode.
   - [Model Management](#model-management)
