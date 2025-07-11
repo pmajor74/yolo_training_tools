@@ -14,8 +14,9 @@ Patrick Major
 - [Text based tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 
 ## Python Versions
-- Python 3.10 to Pyton 3.13 have been tested working (on Windows). 
-- Linux testing pending.
+- Python 3.10 to Pyton 3.12 (as per https://docs.ultralytics.com/quickstart).
+- This has been tested working on Windows with both Pytorch CPU (default with Ultralytics) and Nvidia GPU (CUDA 12.8).
+- Linux testing pending, please give feedack if you have this running on Linux.
 
 ## Upcoming Features
 - N8N integration examples
