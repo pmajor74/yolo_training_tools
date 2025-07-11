@@ -191,6 +191,11 @@ class ModelManagementMode(BaseMode):
         self.unload_btn.setEnabled(False)
         current_model_layout.addWidget(self.unload_btn)
         
+        self.export_onnx_btn = QPushButton("Export to ONNX")
+        self.export_onnx_btn.clicked.connect(self._export_to_onnx)
+        self.export_onnx_btn.setEnabled(False)
+        current_model_layout.addWidget(self.export_onnx_btn)
+        
         self.open_folder_btn = QPushButton("Open Model Folder")
         self.open_folder_btn.clicked.connect(self._open_model_folder)
         self.open_folder_btn.setEnabled(False)
@@ -472,6 +477,75 @@ class ModelManagementMode(BaseMode):
                 )
     
     @pyqtSlot()
+    def _export_to_onnx(self):
+        """Export the current model to ONNX format."""
+        model_cache = ModelCache()
+        model = model_cache.get_model()
+        model_info = model_cache.get_model_info()
+        
+        if not model or not model_info:
+            QMessageBox.warning(self, "No Model", "No model is currently loaded.")
+            return
+        
+        # Get save location
+        model_path = Path(model_info['path'])
+        suggested_name = model_path.stem + ".onnx"
+        
+        save_path, _ = QFileDialog.getSaveFileName(
+            self, "Export Model to ONNX",
+            str(model_path.parent / suggested_name),
+            "ONNX files (*.onnx)"
+        )
+        
+        if not save_path:
+            return
+        
+        try:
+            # Show progress message
+            self.statusMessage.emit(f"Exporting model to ONNX format...", 0)
+            
+            # Export the model using Ultralytics export method
+            # The export method returns the path to the exported model
+            exported_path = model.export(format='onnx')
+            
+            # Move the exported file to the user's chosen location
+            import shutil
+            if str(exported_path) != save_path:
+                shutil.move(str(exported_path), save_path)
+            
+            # Success message
+            self.statusMessage.emit(f"Model exported successfully to: {Path(save_path).name}", 5000)
+            
+            # Ask if user wants to open the folder
+            reply = QMessageBox.question(
+                self, "Export Complete",
+                f"Model exported successfully to:\n{save_path}\n\nWould you like to open the containing folder?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                # Open folder in system file explorer
+                folder = Path(save_path).parent
+                import subprocess
+                import platform
+                
+                if platform.system() == 'Windows':
+                    subprocess.run(['explorer', str(folder)])
+                elif platform.system() == 'Darwin':  # macOS
+                    subprocess.run(['open', str(folder)])
+                else:  # Linux
+                    subprocess.run(['xdg-open', str(folder)])
+                    
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Export Failed",
+                f"Failed to export model to ONNX:\n{str(e)}\n\n"
+                "Make sure you have the required dependencies installed:\n"
+                "pip install onnx onnxruntime"
+            )
+            self.statusMessage.emit("ONNX export failed", 3000)
+    
+    @pyqtSlot()
     def _refresh_current_model(self):
         """Refresh the current model display."""
         model_cache = ModelCache()
@@ -523,6 +597,7 @@ class ModelManagementMode(BaseMode):
             
             # Enable buttons
             self.unload_btn.setEnabled(True)
+            self.export_onnx_btn.setEnabled(True)
             self.open_folder_btn.setEnabled(True)
             
         else:
@@ -542,4 +617,5 @@ class ModelManagementMode(BaseMode):
             
             # Disable buttons
             self.unload_btn.setEnabled(False)
+            self.export_onnx_btn.setEnabled(False)
             self.open_folder_btn.setEnabled(False)

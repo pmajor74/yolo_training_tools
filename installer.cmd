@@ -1,5 +1,34 @@
 @echo off
 
+python -c "import sys; print(f'python version=={sys.version_info.major}.{sys.version_info.minor}')"
+
+:: Check Python version
+for /f "tokens=2 delims==" %%V in ('python -c "import sys; print(f'version=={sys.version_info.major}.{sys.version_info.minor}')"') do set PY_VER=%%V
+
+:: Extract just the version number
+for /f "tokens=2 delims==" %%V in ("version==%PY_VER%") do set VER_NUM=%%V
+
+:: Check minimum and maximum bounds
+for /f "tokens=1,2 delims=." %%A in ("%VER_NUM%") do (
+    set MAJOR=%%A
+    set MINOR=%%B
+)
+
+if "%MAJOR%" NEQ "3" (
+    echo Python 3.8 to 3.12 required. Found: %VER_NUM%
+    goto exit_failure
+)
+
+if %MINOR% LSS 8 (
+    echo Python 3.8 to 3.12 required. Found: %VER_NUM%
+    goto exit_failure
+)
+
+if %MINOR% GTR 12 (
+    echo Python 3.8 to 3.12 required. Found: %VER_NUM%
+    goto exit_failure
+)
+
 :: Get the current directory where the CMD file is executing
 set "currentDir=%~dp0"
 
@@ -12,7 +41,7 @@ if not exist "%venvPath%" (
     python -m venv "%venvPath%"
     if %errorlevel% neq 0 (
         echo Failed to create virtual environment. Exiting.
-        exit /b 1
+
     )
     echo Virtual environment created successfully.
 ) else (
@@ -23,9 +52,15 @@ if not exist "%venvPath%" (
 call "%venvPath%\scripts\activate"
 python.exe -m pip install --upgrade pip
 
-:: uncomment the following to install UV, or just remove the uv from the uv pip install command
-:: pip install uv 
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 
-@echo Installation Complete, if you notice a command not found error, its because you need to install uv (pip install uv)
+@echo Installation Complete
+@echo The CPU torch library is installed, if you have a GPU, then uninstall the local torch library and get the proper pytorch that @echo matches your CUDA installation (otherwise training will be very slow).
+@echo for example if you have CUDA 12.8 the command would be: 
+@echo pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pause
+exit /b 0
+
+:exit_failure
+pause
+exit /b 1
