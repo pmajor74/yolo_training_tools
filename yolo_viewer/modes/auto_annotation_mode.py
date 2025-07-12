@@ -409,10 +409,14 @@ class AutoAnnotationMode(BaseMode):
         self._filter_rejected_btn.setChecked(False)
         self._filter_no_detections_btn.setChecked(False)
         
-        # Clear category filter
-        while self._category_list_widget.count() > 3:
-            self._category_list_widget.takeItem(3)
-        self._category_filter_combo.setCurrentText("All categories")
+        # Populate category filter with all dataset classes
+        if self._dataset_class_names:
+            self._populate_category_filter()
+        else:
+            # Clear category filter if no dataset loaded
+            while self._category_list_widget.count() > 3:
+                self._category_list_widget.takeItem(3)
+            self._category_filter_combo.setCurrentText("All categories")
         
         # Get settings
         include_annotated = self._include_annotated_checkbox.isChecked()
@@ -801,6 +805,9 @@ class AutoAnnotationMode(BaseMode):
             is_modified=True
         )
         
+        # Update category filter counts
+        self._update_category_filter_counts()
+        
     @pyqtSlot(str)
     def _on_processing_started(self, folder_path: str):
         """Handle processing started."""
@@ -1001,6 +1008,15 @@ class AutoAnnotationMode(BaseMode):
             if annotations:
                 # Force a refresh of the canvas display
                 self._canvas.update()
+        
+        # Update category filter to show all classes
+        if hasattr(self, '_category_list_widget'):
+            if self._category_list_widget.count() <= 3:
+                # Only populate if filter is empty
+                self._populate_category_filter()
+            else:
+                # Just update counts if filter already populated
+                self._update_category_filter_counts()
                 
     def _on_deactivate(self) -> Optional[bool]:
         """Called when mode is being deactivated."""
@@ -1301,11 +1317,18 @@ class AutoAnnotationMode(BaseMode):
                 if item and item.flags() & Qt.ItemFlag.ItemIsUserCheckable:
                     item.setCheckState(Qt.CheckState.Unchecked)
                     
+        elif action is not None and isinstance(action, int):
+            # This is a category item - toggle its checkbox
+            if item.checkState() == Qt.CheckState.Checked:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
+                
         # Update filter text
         self._update_category_filter_text()
         
-        # Apply filter
-        self._apply_category_filter()
+        # Apply filter (don't preserve selection for manual filter clicks)
+        self._apply_category_filter(preserve_selection=False)
         
     def _update_category_filter_text(self):
         """Update category filter combo box text based on selection."""
@@ -1323,34 +1346,68 @@ class AutoAnnotationMode(BaseMode):
             self._category_filter_combo.setCurrentText(f"{len(checked_items)} categories selected")
             
     def _populate_category_filter(self):
-        """Populate the category filter with detected classes."""
+        """Populate the category filter with all dataset classes."""
         # Clear existing items (keep first 3)
         while self._category_list_widget.count() > 3:
             self._category_list_widget.takeItem(3)
             
-        # Collect all detected classes
-        all_classes = set()
-        for classes in self._detected_categories.values():
-            all_classes.update(classes)
+        # Use all classes from dataset, not just detected ones
+        if self._dataset_class_names:
+            # Add all dataset classes
+            for class_id in sorted(self._dataset_class_names.keys()):
+                class_name = self._dataset_class_names[class_id]
+                
+                # Count images with this class (from detections)
+                count = sum(1 for classes in self._detected_categories.values() if class_id in classes)
+                
+                item = QListWidgetItem(f"{class_name} ({count})")
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked)  # Default to checked
+                item.setData(Qt.ItemDataRole.UserRole, class_id)
+                self._category_list_widget.addItem(item)
+                
+            # Update combo text
+            self._update_category_filter_text()
             
-        # Add class items
-        for class_id in sorted(all_classes):
-            class_name = self._dataset_class_names.get(class_id, f"Class {class_id}")
+            # Initialize selected categories (all classes checked by default)
+            self._selected_category_filters = set(self._dataset_class_names.keys())
+        else:
+            # No dataset loaded - use detected classes as fallback
+            all_classes = set()
+            for classes in self._detected_categories.values():
+                all_classes.update(classes)
+                
+            # Add detected class items
+            for class_id in sorted(all_classes):
+                class_name = f"Class {class_id}"
+                
+                # Count images with this class
+                count = sum(1 for classes in self._detected_categories.values() if class_id in classes)
+                
+                item = QListWidgetItem(f"{class_name} ({count})")
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked)  # Default to checked
+                item.setData(Qt.ItemDataRole.UserRole, class_id)
+                self._category_list_widget.addItem(item)
+                
+            # Update combo text
+            self._update_category_filter_text()
             
-            # Count images with this class
-            count = sum(1 for classes in self._detected_categories.values() if class_id in classes)
-            
-            item = QListWidgetItem(f"{class_name} ({count})")
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Checked)  # Default to checked
-            item.setData(Qt.ItemDataRole.UserRole, class_id)
-            self._category_list_widget.addItem(item)
-            
-        # Update combo text
-        self._update_category_filter_text()
+            # Initialize selected categories (all checked by default)
+            if all_classes:
+                self._selected_category_filters = all_classes.copy()
         
-    def _apply_category_filter(self):
-        """Apply the selected category filters."""
+    def _apply_category_filter(self, preserve_selection=False):
+        """Apply the selected category filters.
+        
+        Args:
+            preserve_selection: If True, try to preserve current selection
+        """
+        # Save current selection if requested
+        current_selection = None
+        if preserve_selection and self._current_image_path:
+            current_selection = self._current_image_path
+            
         # Get selected categories
         self._selected_category_filters.clear()
         for i in range(3, self._category_list_widget.count()):
@@ -1363,8 +1420,18 @@ class AutoAnnotationMode(BaseMode):
         # Reload gallery with updated filter
         self._reload_gallery_with_filter()
         
-        # Select and load the first image in the filtered view
-        self._select_image_at_position(0)
+        # Restore selection or select first image
+        if preserve_selection and current_selection:
+            # Try to find and select the previously selected image
+            for row in range(self._gallery._model.rowCount()):
+                item = self._gallery._model.get_item(row)
+                if item and item.image_path == current_selection:
+                    self._select_image_at_position(row)
+                    return
+        
+        # Only select first image if explicitly filtering (not preserving)
+        if not preserve_selection:
+            self._select_image_at_position(0)
         
     def _on_category_filter_changed(self, item: QListWidgetItem):
         """Handle category filter item state changes."""
@@ -1375,8 +1442,8 @@ class AutoAnnotationMode(BaseMode):
         # Update filter text
         self._update_category_filter_text()
         
-        # Apply filter
-        self._apply_category_filter()
+        # Apply filter (preserve selection for checkbox changes)
+        self._apply_category_filter(preserve_selection=True)
         
     def _move_selected_to_rejected(self):
         """Move selected images to rejected folder."""
@@ -1540,6 +1607,10 @@ class AutoAnnotationMode(BaseMode):
         if 'names' in data:
             self._dataset_class_names = data['names']
             self.update_class_names(data['names'])
+            
+            # Populate category filter with all dataset classes
+            if self._image_processor.annotation_manager:
+                self._populate_category_filter()
             
         # Enable relevant buttons
         self._update_ui_state()
@@ -1940,3 +2011,34 @@ class AutoAnnotationMode(BaseMode):
             self._splitter.setSizes([controls_width, total_width - controls_width, 0])
             self._gallery_expanded = True
             self._expand_gallery_btn.setText("Retract Gallery")
+    
+    def _update_category_filter_counts(self):
+        """Update the counts in category filter without changing selections."""
+        if not self._dataset_class_names:
+            return
+            
+        # Save current selection states
+        selected_states = {}
+        for i in range(3, self._category_list_widget.count()):
+            item = self._category_list_widget.item(i)
+            if item:
+                class_id = item.data(Qt.ItemDataRole.UserRole)
+                if class_id is not None:
+                    selected_states[class_id] = item.checkState()
+        
+        # Update counts for each class
+        for i in range(3, self._category_list_widget.count()):
+            item = self._category_list_widget.item(i)
+            if item:
+                class_id = item.data(Qt.ItemDataRole.UserRole)
+                if class_id is not None and class_id in self._dataset_class_names:
+                    # Count images with this class
+                    count = sum(1 for classes in self._detected_categories.values() if class_id in classes)
+                    class_name = self._dataset_class_names[class_id]
+                    
+                    # Update item text with new count
+                    item.setText(f"{class_name} ({count})")
+                    
+                    # Restore selection state
+                    if class_id in selected_states:
+                        item.setCheckState(selected_states[class_id])

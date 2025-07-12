@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem, QSlider, QSpinBox, QDoubleSpinBox,
     QTextEdit, QScrollArea, QProgressBar, QStackedWidget
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QEvent
 
 from ..widgets.thumbnail_gallery import ThumbnailGallery
 from ..widgets.annotation_canvas import AnnotationCanvas
@@ -702,7 +702,12 @@ class UIBuilder(QObject):
             QListWidget::item:hover {
                 background-color: #555555;
             }
+            QListWidget::item:selected {
+                background-color: #555555;
+            }
         """)
+        # Disable selection mode to prevent blue highlighting
+        self.category_list_widget.setSelectionMode(QListWidget.SelectionMode.NoSelection)
         
         # Add "Select All" and "Select None" items (not checkable)
         select_all_item = QListWidgetItem("Select All")
@@ -721,6 +726,9 @@ class UIBuilder(QObject):
         self.category_filter_combo.setModel(self.category_list_widget.model())
         self.category_filter_combo.setView(self.category_list_widget)
         self.category_filter_combo.setCurrentText("All categories")
+        
+        # Prevent combo box from closing when clicking items
+        self.category_list_widget.viewport().installEventFilter(self)
         
         # Connect list widget item clicks and changes
         self.category_list_widget.itemClicked.connect(self.categoryFilterClicked.emit)
@@ -910,3 +918,17 @@ class UIBuilder(QObject):
         """Show or hide augmentation settings."""
         self.augmentation_settings.setVisible(visible)
         self.augmentation_scroll.setVisible(visible)
+    
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        """Event filter to prevent combo box from closing when clicking checkboxes."""
+        if obj == self.category_list_widget.viewport():
+            if event.type() == QEvent.Type.MouseButtonRelease:
+                # Get the item at the click position
+                pos = event.pos()
+                item = self.category_list_widget.itemAt(pos)
+                if item:
+                    # Emit the click signal
+                    self.categoryFilterClicked.emit(item)
+                # Prevent the combo box from closing
+                return True
+        return False
