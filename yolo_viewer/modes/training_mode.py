@@ -61,9 +61,6 @@ class TrainingMode(BaseMode):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         
-        # NOTE: Removed local stylesheet to allow Windows native arrow rendering
-        # All styling should be in the global styles.qss file
-        
         # Create main splitter
         splitter = QSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(splitter)
@@ -72,10 +69,8 @@ class TrainingMode(BaseMode):
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        # Removed local stylesheet - rely on global styles
         
         left_widget = QWidget()
-        # Removed local stylesheet - rely on global styles
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         
@@ -90,7 +85,6 @@ class TrainingMode(BaseMode):
         
         self.select_dataset_btn = QPushButton("Load Dataset")
         self.select_dataset_btn.clicked.connect(self._select_dataset)
-        # Removed local stylesheet - rely on global styles
         dataset_path_layout.addWidget(self.select_dataset_btn)
         
         dataset_layout.addLayout(dataset_path_layout)
@@ -124,7 +118,6 @@ class TrainingMode(BaseMode):
         
         # Model size info
         self.model_info_label = QLabel("n: Nano (fastest) | s: Small | m: Medium | l: Large | x: X-Large (most accurate)")
-        # Removed local stylesheet - rely on global styles
         model_layout.addWidget(self.model_info_label)
         
         model_group.setLayout(model_layout)
@@ -190,18 +183,16 @@ class TrainingMode(BaseMode):
         # Add spacing before buttons
         params_layout.addSpacing(10)
         
-        # Training controls - moved to bottom of params group
         controls_layout = QHBoxLayout()
         
         self.start_btn = QPushButton("Start Training")
-        self.start_btn.clicked.connect(self._start_training)
-        # Removed local stylesheet - rely on global styles
+        self.start_btn.clicked.connect(self._start_training)        
+        self.start_btn.setMaximumWidth(120)
         controls_layout.addWidget(self.start_btn)
         
         self.stop_btn = QPushButton("Stop")
         self.stop_btn.clicked.connect(self._stop_training)
         self.stop_btn.setEnabled(False)
-        # Removed local stylesheet - rely on global styles
         controls_layout.addWidget(self.stop_btn)
         controls_layout.addStretch()
         
@@ -255,7 +246,7 @@ class TrainingMode(BaseMode):
         augment_layout.addWidget(self.augment_settings)
         
         augment_group.setLayout(augment_layout)
-        augment_group.setVisible(False)  # Hide the whole group initially
+        augment_group.setVisible(False)
         self.augment_group = augment_group
         left_layout.addWidget(augment_group)
         
@@ -304,7 +295,7 @@ class TrainingMode(BaseMode):
         
         # Tab widget for log and charts
         self.output_tabs = QTabWidget()
-        # Removed local stylesheet - rely on global styles
+
         
         # Training log tab
         log_widget = QWidget()

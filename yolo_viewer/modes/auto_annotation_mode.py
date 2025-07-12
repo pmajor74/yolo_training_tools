@@ -470,9 +470,8 @@ class AutoAnnotationMode(BaseMode):
         # Update UI
         self._reload_gallery_with_filter()
         
-        # If single selection and we're viewing that image, advance to next
-        if len(selected) == 1 and self._current_image_path in selected:
-            self._select_next_image()
+        # Always advance to next image after approval
+        self._select_next_image()
                               
     def _reject_selected(self):
         """Reject annotations for selected images."""
@@ -487,9 +486,8 @@ class AutoAnnotationMode(BaseMode):
         # Update UI
         self._reload_gallery_with_filter()
         
-        # If single selection and we're viewing that image, advance to next
-        if len(selected) == 1 and self._current_image_path in selected:
-            self._select_next_image()
+        # Always advance to next image after rejection
+        self._select_next_image()
                               
     def _approve_current(self):
         """Approve current image annotations."""

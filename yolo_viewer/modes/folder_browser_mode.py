@@ -371,13 +371,13 @@ class FolderBrowserMode(BaseMode):
         self._filter_annotated_btn = QPushButton("Annotated")
         self._filter_annotated_btn.setCheckable(True)
         self._filter_annotated_btn.clicked.connect(lambda: self._set_filter(ImageFilter.ANNOTATED))
-        self._filter_annotated_btn.setMaximumWidth(80)
+        self._filter_annotated_btn.setMaximumWidth(100)
         header_layout.addWidget(self._filter_annotated_btn)
         
         self._filter_unannotated_btn = QPushButton("Unannotated")
         self._filter_unannotated_btn.setCheckable(True)
         self._filter_unannotated_btn.clicked.connect(lambda: self._set_filter(ImageFilter.UNANNOTATED))
-        self._filter_unannotated_btn.setMaximumWidth(80)
+        self._filter_unannotated_btn.setMaximumWidth(120)
         header_layout.addWidget(self._filter_unannotated_btn)
         
         layout.addLayout(header_layout)
@@ -388,12 +388,12 @@ class FolderBrowserMode(BaseMode):
         
         self._select_all_btn = QPushButton("Select All")
         self._select_all_btn.clicked.connect(self._select_all_images)
-        self._select_all_btn.setMaximumWidth(80)
+        self._select_all_btn.setMaximumWidth(100)
         selection_layout.addWidget(self._select_all_btn)
         
         self._select_none_btn = QPushButton("Select None")
         self._select_none_btn.clicked.connect(self._select_none_images)
-        self._select_none_btn.setMaximumWidth(80)
+        self._select_none_btn.setMaximumWidth(100)
         selection_layout.addWidget(self._select_none_btn)
         
         selection_layout.addStretch()

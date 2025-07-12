@@ -364,7 +364,7 @@ class UIBuilder(QObject):
             "This can help detect objects at different angles, scales, and conditions.\n"
             "Note: Augmentation is applied only during inference, not saved to images."
         )
-        self.enable_augmentation_checkbox.setChecked(True)  # ON by default
+        self.enable_augmentation_checkbox.setChecked(True)
         self.enable_augmentation_checkbox.toggled.connect(self.augmentationToggled.emit)
         augmentation_layout.addWidget(self.enable_augmentation_checkbox)
         
@@ -374,11 +374,11 @@ class UIBuilder(QObject):
         
         # Set custom default values
         custom_defaults = {
-            'mosaic': 0.0,      # Disable mosaic
-            'flipud': 0.5,      # 50% vertical flip probability
-            'perspective': 0.1,  # Increased perspective transform
-            'shear': 0.05,      # Moderate shear (was 0.0)
-            'degrees': 45       # 45 degree rotation range
+            'mosaic': 0.0,
+            'flipud': 0.5,
+            'perspective': 0.1,
+            'shear': 0.05,
+            'degrees': 45
         }
         self.augmentation_settings.set_settings(custom_defaults)
         
@@ -517,11 +517,13 @@ class UIBuilder(QObject):
         self.start_training_btn = QPushButton("Start Training")
         self.start_training_btn.clicked.connect(self.startTraining.emit)
         self.start_training_btn.setEnabled(False)
+        self.start_training_btn.setMaximumWidth(120)
         training_btn_layout.addWidget(self.start_training_btn)
         
         self.stop_training_btn = QPushButton("Stop")
         self.stop_training_btn.clicked.connect(self.stopTraining.emit)
         self.stop_training_btn.setEnabled(False)
+        self.stop_training_btn.setMaximumWidth(80)
         training_btn_layout.addWidget(self.stop_training_btn)
         
         training_layout.addLayout(training_btn_layout)
@@ -819,7 +821,7 @@ class UIBuilder(QObject):
         
         # Editor header
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(10)  # Add proper spacing between elements
+        header_layout.setSpacing(10)
         
         self.annotation_count_label = QLabel("Annotations: 0")
         self.annotation_count_label.setStyleSheet("font-weight: bold;")
@@ -829,7 +831,7 @@ class UIBuilder(QObject):
         
         # Class selection with proper spacing
         class_layout = QHBoxLayout()
-        class_layout.setSpacing(5)  # Small spacing between label and combo
+        class_layout.setSpacing(5)
         class_label = QLabel("Class:")
         class_layout.addWidget(class_label)
         
@@ -895,7 +897,7 @@ class UIBuilder(QObject):
             'batch': self.batch_spin.value(),
             'imgsz': int(self.image_size_combo.currentText()),
             'lr0': self.lr_spin.value(),
-            'device': device  # Auto-detected device
+            'device': device
         }
     
     def get_augmentation_settings(self) -> Dict:
