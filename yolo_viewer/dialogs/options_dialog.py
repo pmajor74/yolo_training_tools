@@ -114,9 +114,8 @@ class OptionsDialog(QDialog):
     
     def _load_settings(self):
         """Load current settings into the dialog."""
-        # Load workers setting (default to 0 for Windows, 8 for others)
-        default_workers = 0 if os.name == 'nt' else 8
-        workers = self.settings.get('data_loading_workers', default_workers)
+        # Load workers setting (default to 4 for all platforms)
+        workers = self.settings.get('data_loading_workers', 4)
         self.workers_spin.setValue(workers)
     
     def _apply_settings(self):

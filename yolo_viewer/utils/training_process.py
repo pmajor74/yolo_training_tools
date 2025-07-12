@@ -83,8 +83,7 @@ class TrainingProcess(QObject):
         """Create a Python script to run YOLO training."""
         # Get workers setting before creating the script
         settings = SettingsManager()
-        default_workers = 0 if os.name == 'nt' else 8
-        workers = settings.get('data_loading_workers', default_workers)
+        workers = settings.get('data_loading_workers', 4)  # Default to 4 for all platforms
         
         script_content = f'''#!/usr/bin/env python3
 """Auto-generated YOLO training script."""
