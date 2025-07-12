@@ -28,18 +28,19 @@ class DatasetManager(QObject):
         self._splits: Dict[str, str] = {}  # split name -> relative path
         self._raw_data: Optional[Dict] = None  # Raw YAML data
         
-    def load_dataset(self, yaml_path: Path) -> bool:
+    def load_dataset(self, yaml_path: Path, force_reload: bool = False) -> bool:
         """
         Load dataset from data.yaml file.
         
         Args:
             yaml_path: Path to data.yaml file
+            force_reload: If True, reload even if it's the same path
             
         Returns:
             True if successful, False otherwise
         """
-        # Check if this is the same dataset
-        if self._yaml_path == yaml_path:
+        # Check if this is the same dataset and not forcing reload
+        if self._yaml_path == yaml_path and not force_reload:
             return True
             
         try:

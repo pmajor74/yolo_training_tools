@@ -55,6 +55,7 @@ class DatasetEditorMode(BaseMode):
         
         # Connect to dataset manager signals
         self._dataset_manager.datasetLoaded.connect(self._on_dataset_manager_loaded)
+        self._dataset_manager.datasetUpdated.connect(self._on_dataset_manager_updated)
     
     def _setup_ui(self):
         """Setup the UI for dataset editor mode."""
@@ -82,15 +83,34 @@ class DatasetEditorMode(BaseMode):
         self.split_combo.setMinimumWidth(100)
         controls_layout.addWidget(self.split_combo)
         
+        # Add stretch to push class dropdown more to center
+        controls_layout.addStretch(1)
+        
         controls_layout.addWidget(QLabel("|"))
         
-        controls_layout.addWidget(QLabel("Class:"))
+        # Make class label and dropdown more prominent
+        class_label = QLabel("Class:")
+        class_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        controls_layout.addWidget(class_label)
+        
         self.class_combo = QComboBox()
         self.class_combo.currentIndexChanged.connect(self._on_class_changed)
-        self.class_combo.setMinimumWidth(150)
+        self.class_combo.setMinimumWidth(200)  # Increased width
+        self.class_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 12px;
+                font-weight: bold;
+                padding: 4px;
+                background-color: #f0f0f0;
+            }
+            QComboBox:hover {
+                background-color: #e0e0e0;
+            }
+        """)
         controls_layout.addWidget(self.class_combo)
         
-        controls_layout.addStretch()
+        # Add another stretch to balance the layout
+        controls_layout.addStretch(2)
         
         self.save_btn = QPushButton("💾 Save Changes")
         self.save_btn.clicked.connect(self._save_annotations)
@@ -216,6 +236,10 @@ class DatasetEditorMode(BaseMode):
         """Called when mode is activated."""
         self.statusMessage.emit("Dataset Editor mode activated - Draw annotations on images", 3000)
         
+        # Subscribe to dataset manager signals
+        self._dataset_manager.datasetLoaded.connect(self._on_dataset_manager_loaded)
+        self._dataset_manager.datasetUpdated.connect(self._on_dataset_manager_updated)
+        
         # Check if dataset manager has a dataset loaded
         if self._dataset_manager.has_dataset() and not self._dataset_info:
             # Load dataset from dataset manager
@@ -231,6 +255,13 @@ class DatasetEditorMode(BaseMode):
     
     def _on_deactivate(self) -> Optional[bool]:
         """Called when mode is deactivated."""
+        # Disconnect dataset manager signals
+        try:
+            self._dataset_manager.datasetLoaded.disconnect(self._on_dataset_manager_loaded)
+            self._dataset_manager.datasetUpdated.disconnect(self._on_dataset_manager_updated)
+        except:
+            pass  # Signals might not be connected
+            
         # Set flag to prevent image selection dialogs
         self._deactivating = True
         
@@ -334,7 +365,9 @@ class DatasetEditorMode(BaseMode):
         self._loading = True
         try:
             # First update the dataset manager
-            if not self._dataset_manager.load_dataset(yaml_path):
+            # Force reload if we're reloading the same dataset (e.g., after editing)
+            force_reload = self._dataset_info and self._dataset_info.yaml_path == yaml_path
+            if not self._dataset_manager.load_dataset(yaml_path, force_reload=force_reload):
                 self.statusMessage.emit("Failed to load data.yaml", 5000)
                 return False
             
@@ -702,6 +735,17 @@ class DatasetEditorMode(BaseMode):
         if not self._dataset_info or self._dataset_info.yaml_path != yaml_path:
             # Only load if UI exists (mode has been activated)
             if hasattr(self, 'dataset_label'):
+                self._load_from_dataset_manager()
+    
+    @pyqtSlot()
+    def _on_dataset_manager_updated(self):
+        """Handle dataset updated in dataset manager (e.g., after editing data.yaml)."""
+        # Refresh the dataset to get updated class names
+        if self._dataset_info and hasattr(self, 'dataset_label'):
+            # Get current yaml path
+            yaml_path = self._dataset_manager.get_yaml_path()
+            if yaml_path and yaml_path == self._dataset_info.yaml_path:
+                # Same dataset was updated, refresh it
                 self._load_from_dataset_manager()
     
     def _load_from_dataset_manager(self):
