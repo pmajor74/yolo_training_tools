@@ -688,17 +688,21 @@ class AutoAnnotationMode(BaseMode):
     def _on_annotation_added(self, annotation: Annotation):
         """Handle annotation added."""
         if self._current_image_path:
+            self._save_current_annotations()
             self._update_stats_display()
             self._update_annotation_count()
             
     def _on_annotation_modified(self, annotation: Annotation):
         """Handle annotation modified."""
         if self._current_image_path:
+            self._save_current_annotations()
             self._update_stats_display()
             self._update_annotation_count()
             
     def _on_annotation_deleted(self, annotation: Annotation):
         """Handle annotation deleted."""
+        if self._current_image_path:
+            self._save_current_annotations()
         self._update_stats_display()
         self._update_annotation_count()
         
@@ -1035,10 +1039,13 @@ class AutoAnnotationMode(BaseMode):
         
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         """Event filter to save annotations when clicking on gallery."""
+        # Note: Annotations are now saved immediately when added/modified/deleted,
+        # so we only need to save here if switching images
         if event.type() == QEvent.Type.MouseButtonPress:
-            # Save current annotations when clicking anywhere in the gallery
-            if self._current_image_path:
-                self._save_current_annotations()
+            if watched == self._gallery or watched == self._gallery.list_view:
+                # Only save when clicking in the gallery (image switching)
+                if self._current_image_path:
+                    self._save_current_annotations()
                 
         # Handle right-click on gallery for context menu
         if (watched == self._gallery.list_view and 
@@ -1052,9 +1059,8 @@ class AutoAnnotationMode(BaseMode):
         
     def mousePressEvent(self, event):
         """Handle mouse press events."""
-        # Save annotations when clicking anywhere
-        if self._current_image_path:
-            self._save_current_annotations()
+        # Note: Annotations are now saved immediately when added/modified/deleted
+        # This is kept as a safety net for any edge cases
         super().mousePressEvent(event)
         
     def keyPressEvent(self, event):
