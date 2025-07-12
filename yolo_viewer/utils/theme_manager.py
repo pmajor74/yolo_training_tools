@@ -1435,4 +1435,48 @@ QWidget[canvas="true"] {{
     background-color: {colors.chart_bg};
     border: 1px solid {colors.border};
 }}
+
+/* Message Box - High contrast for visibility */
+QMessageBox {{
+    background-color: {'#f0f0f0' if colors.is_dark else '#2b2b2b'};
+    color: {'#000000' if colors.is_dark else '#ffffff'};
+    border: 2px solid {colors.primary};
+}}
+
+QMessageBox QLabel {{
+    background-color: transparent;
+    color: {'#000000' if colors.is_dark else '#ffffff'};
+    padding: 10px;
+    font-size: 14px;
+}}
+
+QMessageBox QPushButton {{
+    background-color: {colors.primary};
+    color: {self._get_button_text_color(colors)};
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    min-width: 80px;
+    margin: 5px;
+}}
+
+QMessageBox QPushButton:hover {{
+    background-color: {colors.primary_variant};
+}}
+
+QMessageBox QPushButton:pressed {{
+    background-color: {colors.secondary_variant};
+}}
+
+QMessageBox QPushButton:default {{
+    border: 2px solid {colors.primary_variant};
+}}
+
+/* Dialog background - High contrast */
+QDialog {{
+    background-color: {'#e8e8e8' if colors.is_dark else '#2b2b2b'};
+    color: {'#000000' if colors.is_dark else '#ffffff'};
+    border: 1px solid {colors.border};
+}}
 """
