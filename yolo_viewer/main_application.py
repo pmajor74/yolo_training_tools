@@ -730,13 +730,18 @@ def main():
     
     qInstallMessageHandler(qt_message_handler)
     
-    # Set Windows style to ensure proper arrow rendering on Windows
-    # Python 3.13 fix: Only set style on Windows, and handle potential failures
-    if sys.platform == 'win32':
-        try:
-            QApplication.setStyle("Windows")
-        except Exception as e:
-            print(f"Warning: Failed to set Windows style: {e}")
+    # Use Fusion style for better cross-platform consistency
+    # Fusion handles spinbox arrows better in dark themes
+    try:
+        QApplication.setStyle("Fusion")
+    except Exception as e:
+        print(f"Warning: Failed to set Fusion style: {e}")
+        # Fallback to Windows style on Windows
+        if sys.platform == 'win32':
+            try:
+                QApplication.setStyle("Windows")
+            except:
+                pass
     
     # Create main window but don't show it yet
     try:

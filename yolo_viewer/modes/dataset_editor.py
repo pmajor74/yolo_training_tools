@@ -96,17 +96,6 @@ class DatasetEditorMode(BaseMode):
         self.class_combo = QComboBox()
         self.class_combo.currentIndexChanged.connect(self._on_class_changed)
         self.class_combo.setMinimumWidth(200)  # Increased width
-        self.class_combo.setStyleSheet("""
-            QComboBox {
-                font-size: 12px;
-                font-weight: bold;
-                padding: 4px;
-                background-color: #f0f0f0;
-            }
-            QComboBox:hover {
-                background-color: #e0e0e0;
-            }
-        """)
         controls_layout.addWidget(self.class_combo)
         
         # Add another stretch to balance the layout

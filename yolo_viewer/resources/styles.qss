@@ -118,6 +118,19 @@ QLabel {
     color: #cccccc;
 }
 
+/* Info Icon Labels */
+QLabel[objectName="info_icon"] {
+    color: #0d7377;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 2px;
+    background-color: transparent;
+}
+
+QLabel[objectName="info_icon"]:hover {
+    color: #14ffec;
+}
+
 /* Model status label */
 QLabel#modelStatusLabel {
     font-weight: bold;
@@ -165,17 +178,84 @@ QSpinBox, QDoubleSpinBox {
     border: 1px solid #555555;
     border-radius: 3px;
     padding: 4px;
+    padding-right: 20px; /* Space for arrows */
     min-height: 20px;
-    /* Important: Do not set padding-right to leave space for arrows */
 }
 
-/* Let Windows handle all SpinBox button and arrow rendering
-   Do not style these subcontrols to preserve native arrows:
-   - QSpinBox::up-button
-   - QSpinBox::down-button  
-   - QSpinBox::up-arrow
-   - QSpinBox::down-arrow
-*/
+QSpinBox:hover, QDoubleSpinBox:hover {
+    border-color: #0d7377;
+}
+
+/* Spin Box Buttons */
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 16px;
+    height: 50%;
+    border-left: 1px solid #555555;
+    background-color: #555555;
+    border-top-right-radius: 3px;
+}
+
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: #666666;
+}
+
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {
+    background-color: #0d7377;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 16px;
+    height: 50%;
+    border-left: 1px solid #555555;
+    background-color: #555555;
+    border-bottom-right-radius: 3px;
+    border-top: none;
+}
+
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #666666;
+}
+
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
+    background-color: #0d7377;
+}
+
+/* Spin Box Arrows */
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 4px 6px 4px;
+    border-color: transparent transparent #cccccc transparent;
+}
+
+QSpinBox::up-arrow:hover, QDoubleSpinBox::up-arrow:hover {
+    border-color: transparent transparent #ffffff transparent;
+}
+
+QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled {
+    border-color: transparent transparent #666666 transparent;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 4px 0 4px;
+    border-color: #cccccc transparent transparent transparent;
+}
+
+QSpinBox::down-arrow:hover, QDoubleSpinBox::down-arrow:hover {
+    border-color: #ffffff transparent transparent transparent;
+}
+
+QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled {
+    border-color: #666666 transparent transparent transparent;
+}
 
 /* Check Box - Fixed styling */
 QCheckBox {
@@ -251,6 +331,25 @@ QHeaderView::section:hover {
     background-color: #2b2b2b;
 }
 
+/* Line Edit */
+QLineEdit {
+    background-color: #4a4a4a;
+    color: #cccccc;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 4px 8px;
+    min-height: 20px;
+}
+
+QLineEdit:hover {
+    border-color: #0d7377;
+}
+
+QLineEdit:focus {
+    border-color: #0d7377;
+    background-color: #555555;
+}
+
 /* Text Edit */
 QTextEdit {
     background-color: #3c3c3c;
@@ -285,19 +384,85 @@ QComboBox {
     border: 1px solid #555555;
     border-radius: 3px;
     padding: 4px 8px;
+    padding-right: 30px; /* Space for dropdown arrow */
     min-width: 100px;
-    /* Important: Do not set padding-right to leave space for arrow */
+    font-size: 12px;
+    font-weight: bold;
 }
 
 QComboBox:hover {
     border-color: #0d7377;
 }
 
-/* Let Windows handle all ComboBox drop-down and arrow rendering
-   Do not style these subcontrols to preserve native arrows:
-   - QComboBox::drop-down
-   - QComboBox::down-arrow
-*/
+QComboBox:on { /* When dropdown is open */
+    border-color: #0d7377;
+    background-color: #555555;
+}
+
+/* ComboBox Drop-down Button */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #555555;
+    background-color: #555555;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #666666;
+}
+
+QComboBox::drop-down:on {
+    background-color: #0d7377;
+}
+
+/* ComboBox Arrow */
+QComboBox::down-arrow {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 5px 0 5px;
+    border-color: #cccccc transparent transparent transparent;
+}
+
+QComboBox::down-arrow:hover {
+    border-color: #ffffff transparent transparent transparent;
+}
+
+QComboBox::down-arrow:on { /* When dropdown is open */
+    border-color: #ffffff transparent transparent transparent;
+}
+
+QComboBox::down-arrow:disabled {
+    border-color: #666666 transparent transparent transparent;
+}
+
+/* ComboBox List View */
+QComboBox QAbstractItemView {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    selection-background-color: #0d7377;
+    selection-color: white;
+    border: 1px solid #555555;
+    padding: 4px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 4px;
+    min-height: 20px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #4a4a4a;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #0d7377;
+    color: white;
+}
 
 /* Menu Bar */
 QMenuBar {

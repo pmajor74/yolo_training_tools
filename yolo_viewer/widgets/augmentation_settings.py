@@ -35,39 +35,6 @@ class AugmentationSettings(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
-        self._apply_dark_theme()
-    
-    def _apply_dark_theme(self):
-        """Apply dark theme styling."""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-                color: #cccccc;
-            }
-            QLabel {
-                color: #cccccc;
-                background-color: transparent;
-            }
-            QToolTip {
-                background-color: #2b2b2b;
-                color: #ffffff;
-                border: 1px solid #555555;
-                padding: 5px;
-                border-radius: 3px;
-                font-size: 12px;
-            }
-            QDoubleSpinBox {
-                background-color: #4a4a4a;
-                border: 1px solid #555555;
-                border-radius: 3px;
-                padding: 4px;
-                color: #cccccc;
-                min-height: 20px;
-            }
-            QDoubleSpinBox:hover {
-                border-color: #0d7377;
-            }
-        """)
     
     def _setup_ui(self):
         """Setup the UI."""
@@ -118,18 +85,6 @@ class AugmentationSettings(QWidget):
             # Add info icon with tooltip
             info_label = InfoLabel("ⓘ", tooltip)
             info_label.setObjectName("info_icon")
-            info_label.setStyleSheet("""
-                QLabel#info_icon { 
-                    color: #0d7377; 
-                    font-size: 16px;
-                    font-weight: bold;
-                    padding: 2px;
-                    background-color: transparent;
-                }
-                QLabel#info_icon:hover {
-                    color: #14ffec;
-                }
-            """)
             param_layout.addWidget(info_label)
             
             param_layout.addStretch()

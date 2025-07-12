@@ -1043,26 +1043,17 @@ QPushButton[flat="true"]:hover {{
     color: {self._get_button_text_color(colors)};
 }}
 
-/* ComboBox */
+/* ComboBox - DO NOT style arrows to preserve native rendering */
 QComboBox {{
     background-color: {colors.surface};
     color: {colors.text_primary};
     border: 1px solid {colors.border};
-    padding: 6px 12px;
+    padding: 4px 8px;
     border-radius: 4px;
 }}
 
 QComboBox:hover {{
-    border-color: {colors.border_hover};
-}}
-
-QComboBox:focus {{
     border-color: {colors.primary};
-}}
-
-QComboBox::drop-down {{
-    border: none;
-    padding-right: 8px;
 }}
 
 QComboBox QAbstractItemView {{
@@ -1090,21 +1081,12 @@ QLineEdit:focus {{
     border-color: {colors.primary};
 }}
 
-/* Spin Box */
+/* Spin Box - Remove border styling to keep native arrows */
 QSpinBox, QDoubleSpinBox {{
     background-color: {colors.surface};
     color: {colors.text_primary};
-    border: 1px solid {colors.border};
-    padding: 6px 12px;
-    border-radius: 4px;
-}}
-
-QSpinBox:hover, QDoubleSpinBox:hover {{
-    border-color: {colors.border_hover};
-}}
-
-QSpinBox:focus, QDoubleSpinBox:focus {{
-    border-color: {colors.primary};
+    padding: 4px;
+    min-height: 20px;
 }}
 
 /* Text Edit */
