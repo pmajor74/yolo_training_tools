@@ -368,8 +368,8 @@ class ThemeManager(QObject):
             background="#0f0e0a",
             surface="#1a1915",
             surface_variant="#252420",
-            primary="#ffc107",
-            primary_variant="#ffb300",
+            primary="#d4a017",  # Darker amber for better contrast
+            primary_variant="#b8860b",  # Darker gold 
             secondary="#ff6f00",
             secondary_variant="#ff5722",
             text_primary="#fef7e0",
@@ -384,7 +384,7 @@ class ThemeManager(QObject):
             scrollbar_bg="#1a1915",
             scrollbar_handle="#4d4a40",
             scrollbar_handle_hover="#5d5a50",
-            selection_bg="#ffb300",
+            selection_bg="#b8860b",  # Darker for better contrast
             selection_text="#000000",
             tooltip_bg="#3d3a30",
             tooltip_text="#fef7e0",
@@ -883,6 +883,77 @@ class ThemeManager(QObject):
         """Get colors for the current theme."""
         return self.get_theme_colors(self._current_theme)
     
+    def _get_button_text_color(self, colors: ThemeColors) -> str:
+        """Get appropriate text color for buttons based on WCAG contrast requirements."""
+        # Convert hex to RGB and calculate relative luminance (WCAG formula)
+        def get_luminance(hex_color):
+            color = hex_color.lstrip('#')
+            r, g, b = tuple(int(color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
+            
+            # Apply gamma correction
+            r = r/12.92 if r <= 0.03928 else ((r + 0.055)/1.055) ** 2.4
+            g = g/12.92 if g <= 0.03928 else ((g + 0.055)/1.055) ** 2.4
+            b = b/12.92 if b <= 0.03928 else ((b + 0.055)/1.055) ** 2.4
+            
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        
+        # Calculate contrast ratio
+        def get_contrast_ratio(color1, color2):
+            lum1 = get_luminance(color1)
+            lum2 = get_luminance(color2)
+            lighter = max(lum1, lum2)
+            darker = min(lum1, lum2)
+            return (lighter + 0.05) / (darker + 0.05)
+        
+        # Check contrast with both black and white
+        contrast_with_white = get_contrast_ratio(colors.primary, "#ffffff")
+        contrast_with_black = get_contrast_ratio(colors.primary, "#000000")
+        
+        # WCAG AA requires 4.5:1 for normal text, we'll use 3:1 for large bold text
+        # If neither meets the standard, choose the better one
+        if contrast_with_black >= 3.0:
+            return "#000000"
+        elif contrast_with_white >= 3.0:
+            return "#ffffff"
+        else:
+            # Neither meets standard, use the one with better contrast
+            return "#000000" if contrast_with_black > contrast_with_white else "#ffffff"
+    
+    def _get_contrast_text_color(self, bg_color: str, prefer_dark: bool = True) -> str:
+        """Get appropriate text color for any background based on WCAG contrast requirements."""
+        # Convert hex to RGB and calculate relative luminance (WCAG formula)
+        def get_luminance(hex_color):
+            color = hex_color.lstrip('#')
+            r, g, b = tuple(int(color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
+            
+            # Apply gamma correction
+            r = r/12.92 if r <= 0.03928 else ((r + 0.055)/1.055) ** 2.4
+            g = g/12.92 if g <= 0.03928 else ((g + 0.055)/1.055) ** 2.4
+            b = b/12.92 if b <= 0.03928 else ((b + 0.055)/1.055) ** 2.4
+            
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        
+        # Calculate contrast ratio
+        def get_contrast_ratio(color1, color2):
+            lum1 = get_luminance(color1)
+            lum2 = get_luminance(color2)
+            lighter = max(lum1, lum2)
+            darker = min(lum1, lum2)
+            return (lighter + 0.05) / (darker + 0.05)
+        
+        # Check contrast with both black and white
+        contrast_with_white = get_contrast_ratio(bg_color, "#ffffff")
+        contrast_with_black = get_contrast_ratio(bg_color, "#000000")
+        
+        # WCAG AA requires 4.5:1 for normal text
+        if contrast_with_black >= 4.5:
+            return "#000000"
+        elif contrast_with_white >= 4.5:
+            return "#ffffff"
+        else:
+            # Neither meets standard, use the one with better contrast
+            return "#000000" if contrast_with_black > contrast_with_white else "#ffffff"
+    
     def generate_stylesheet(self, theme: str) -> str:
         """Generate a complete Qt stylesheet for the theme."""
         colors = self.get_theme_colors(theme)
@@ -940,7 +1011,7 @@ QTabBar::tab:focus {{
 /* Buttons */
 QPushButton {{
     background-color: {colors.primary};
-    color: {"#ffffff" if colors.is_dark else colors.text_primary};
+    color: {self._get_button_text_color(colors)};
     border: none;
     padding: 8px 16px;
     border-radius: 4px;
@@ -969,7 +1040,7 @@ QPushButton[flat="true"] {{
 
 QPushButton[flat="true"]:hover {{
     background-color: {colors.primary};
-    color: {"#ffffff" if colors.is_dark else colors.background};
+    color: {self._get_button_text_color(colors)};
 }}
 
 /* ComboBox */
@@ -999,7 +1070,7 @@ QComboBox QAbstractItemView {{
     color: {colors.text_primary};
     border: 1px solid {colors.border};
     selection-background-color: {colors.selection_bg};
-    selection-color: {colors.selection_text};
+    selection-color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
 /* Line Edit */
@@ -1060,7 +1131,7 @@ QListView::item {{
 
 QListView::item:selected {{
     background-color: {colors.selection_bg};
-    color: {colors.selection_text};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
 QListView::item:hover {{
@@ -1082,7 +1153,7 @@ QTreeView::item {{
 
 QTreeView::item:selected {{
     background-color: {colors.selection_bg};
-    color: {colors.selection_text};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
 QTreeView::item:hover {{
@@ -1099,7 +1170,7 @@ QTableView {{
 
 QTableView::item:selected {{
     background-color: {colors.selection_bg};
-    color: {colors.selection_text};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
 QHeaderView::section {{
@@ -1177,7 +1248,7 @@ QMenu::item {{
 
 QMenu::item:selected {{
     background-color: {colors.selection_bg};
-    color: {colors.selection_text};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
 /* Tool Bar */

@@ -4,7 +4,7 @@ import json
 import os
 import base64
 from typing import Any, Optional
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal, QByteArray
 from .constants import DEFAULT_CONFIDENCE, DEFAULT_IOU
 
 
@@ -57,7 +57,10 @@ class SettingsManager(QObject):
             # Create a copy of settings to handle special types
             settings_to_save = {}
             for key, value in self._settings.items():
-                if isinstance(value, bytes):
+                if isinstance(value, (bytes, QByteArray)):
+                    # Convert QByteArray to bytes if needed
+                    if isinstance(value, QByteArray):
+                        value = value.data()
                     # Encode bytes as base64 string for JSON
                     settings_to_save[key] = {
                         '_type': 'bytes',
@@ -157,8 +160,11 @@ class SettingsManager(QObject):
         """Get saved window geometry."""
         return self.get('window_geometry')
     
-    def set_window_geometry(self, geometry: bytes):
+    def set_window_geometry(self, geometry):
         """Save window geometry."""
+        # Convert QByteArray to bytes if needed
+        if isinstance(geometry, QByteArray):
+            geometry = geometry.data()
         self.set('window_geometry', geometry)
     
     def get_splitter_sizes(self, splitter_id: str) -> Optional[list]:
