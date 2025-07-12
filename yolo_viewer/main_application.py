@@ -552,6 +552,8 @@ class MainApplication(QMainWindow):
             f"{APP_NAME} v{APP_VERSION}\n\n"
             "A comprehensive YOLO dataset management tool.\n\n"
             "Built with PyQt6 and Ultralytics.\n\n"
+            f"Author: Patrick Major\n"
+            f"Email: codingwithoutbugs@gmail.com\n\n"
             f"PyTorch: {torch_version}\n"
             f"Compute: {device_info}"
         )
