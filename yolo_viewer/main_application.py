@@ -25,6 +25,7 @@ from .modes.training_mode import TrainingMode
 from .modes.auto_annotation_mode import AutoAnnotationMode
 from .modes.dataset_split_mode import DatasetSplitMode
 from .widgets.device_status_widget import DeviceStatusWidget
+from .utils.combobox_fixer import fix_all_comboboxes_in_widget
 
 
 class MainApplication(QMainWindow):
@@ -400,6 +401,9 @@ class MainApplication(QMainWindow):
             # Add to tab widget
             self.tab_widget.addTab(widget, MODE_NAMES[mode])
             self.mode_widgets[mode] = widget
+        
+        # Fix all QComboBox dropdowns to have proper hover highlighting
+        QTimer.singleShot(100, lambda: fix_all_comboboxes_in_widget(self))
     
     def _connect_signals(self):
         """Connect signals."""

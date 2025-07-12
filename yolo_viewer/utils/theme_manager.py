@@ -1064,6 +1064,43 @@ QComboBox QAbstractItemView {{
     selection-color: {self._get_contrast_text_color(colors.selection_bg)};
 }}
 
+QComboBox QAbstractItemView::item {{
+    padding: 4px;
+    background-color: {colors.surface};
+}}
+
+QComboBox QAbstractItemView::item:hover {{
+    background-color: {colors.surface_variant};
+    color: {colors.text_primary};
+}}
+
+QComboBox QAbstractItemView::item:selected {{
+    background-color: {colors.selection_bg};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
+}}
+
+/* ComboBox QListView specific styling */
+QComboBox QListView {{
+    background-color: {colors.surface};
+    color: {colors.text_primary};
+    outline: none;
+}}
+
+QComboBox QListView::item {{
+    padding: 4px;
+    background-color: {colors.surface};
+}}
+
+QComboBox QListView::item:hover {{
+    background-color: {colors.surface_variant};
+    color: {colors.text_primary};
+}}
+
+QComboBox QListView::item:selected {{
+    background-color: {colors.selection_bg};
+    color: {self._get_contrast_text_color(colors.selection_bg)};
+}}
+
 /* Line Edit */
 QLineEdit {{
     background-color: {colors.surface};
