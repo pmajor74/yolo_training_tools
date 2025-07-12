@@ -523,7 +523,7 @@ class UIBuilder(QObject):
         self.stop_training_btn = QPushButton("Stop")
         self.stop_training_btn.clicked.connect(self.stopTraining.emit)
         self.stop_training_btn.setEnabled(False)
-        self.stop_training_btn.setMaximumWidth(80)
+        self.stop_training_btn.setMaximumWidth(140)
         training_btn_layout.addWidget(self.stop_training_btn)
         
         training_layout.addLayout(training_btn_layout)

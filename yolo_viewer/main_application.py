@@ -26,6 +26,7 @@ from .modes.auto_annotation_mode import AutoAnnotationMode
 from .modes.dataset_split_mode import DatasetSplitMode
 from .widgets.device_status_widget import DeviceStatusWidget
 from .utils.combobox_fixer import fix_all_comboboxes_in_widget
+from .dialogs import OptionsDialog
 
 
 class MainApplication(QMainWindow):
@@ -228,6 +229,16 @@ class MainApplication(QMainWindow):
             action.triggered.connect(lambda checked, t=theme_id: self._on_theme_changed(t))
             self.theme_group.addAction(action)
             theme_menu.addAction(action)
+        
+        # Add separator before Options
+        view_menu.addSeparator()
+        
+        # Options action
+        options_action = QAction("&Options...", self)
+        options_action.setShortcut("Ctrl+Alt+O")
+        options_action.setToolTip("Configure application options")
+        options_action.triggered.connect(self._on_options)
+        view_menu.addAction(options_action)
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -581,6 +592,21 @@ class MainApplication(QMainWindow):
         
         # Update status
         self.statusbar.showMessage(f"Theme changed to: {theme}", 3000)
+    
+    @pyqtSlot()
+    def _on_options(self):
+        """Show options dialog."""
+        dialog = OptionsDialog(self)
+        
+        # Connect to handle saved options
+        dialog.optionsSaved.connect(self._on_options_saved)
+        
+        dialog.exec()
+    
+    @pyqtSlot()
+    def _on_options_saved(self):
+        """Handle when options are saved."""
+        self.statusbar.showMessage("Options saved", 3000)
     
     def _apply_theme(self, theme: str):
         """Apply theme stylesheet to the application."""

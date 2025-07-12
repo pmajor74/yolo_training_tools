@@ -193,6 +193,7 @@ class TrainingMode(BaseMode):
         self.stop_btn = QPushButton("Stop")
         self.stop_btn.clicked.connect(self._stop_training)
         self.stop_btn.setEnabled(False)
+        self.stop_btn.setMaximumWidth(140)
         controls_layout.addWidget(self.stop_btn)
         controls_layout.addStretch()
         

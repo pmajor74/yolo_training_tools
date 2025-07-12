@@ -7,6 +7,7 @@ from typing import Dict, Optional
 from datetime import datetime
 
 from PyQt6.QtCore import QObject, QProcess, pyqtSignal, pyqtSlot
+from ..core import SettingsManager
 
 
 class TrainingProcess(QObject):
@@ -80,6 +81,11 @@ class TrainingProcess(QObject):
     
     def _create_training_script(self, script_path: Path, config: Dict, export_onnx: bool):
         """Create a Python script to run YOLO training."""
+        # Get workers setting before creating the script
+        settings = SettingsManager()
+        default_workers = 0 if os.name == 'nt' else 8
+        workers = settings.get('data_loading_workers', default_workers)
+        
         script_content = f'''#!/usr/bin/env python3
 """Auto-generated YOLO training script."""
 import os
@@ -141,8 +147,8 @@ def main():
         print("\\nAvailable models: yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt")
         sys.exit(1)
     
-    # Set workers to 0 on Windows to avoid multiprocessing issues
-    workers = 0 if os.name == 'nt' else 8
+    # Workers setting (passed from parent process)
+    workers = {workers}
     
     # Start training
     print("Starting training...")

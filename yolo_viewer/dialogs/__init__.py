@@ -1,5 +1,5 @@
 """Dialog windows for YOLO Dataset Viewer."""
 
-# Will be populated as we create dialogs
+from .options_dialog import OptionsDialog
 
-__all__ = []
+__all__ = ['OptionsDialog']
