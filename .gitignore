@@ -76,3 +76,4 @@ azdo_task_agent/app/config/settings.py
 .coverage
 .claude
 CLAUDE.md
+settings.json

@@ -1,8 +1,11 @@
-"""Settings manager using QSettings for persistence."""
+"""Settings manager using JSON file for persistence."""
 
+import json
+import os
+import base64
 from typing import Any, Optional
-from PyQt6.QtCore import QObject, QSettings, pyqtSignal
-from .constants import ORGANIZATION, APP_NAME, DEFAULT_CONFIDENCE, DEFAULT_IOU
+from PyQt6.QtCore import QObject, pyqtSignal
+from .constants import DEFAULT_CONFIDENCE, DEFAULT_IOU
 
 
 class SettingsManager(QObject):
@@ -14,11 +17,59 @@ class SettingsManager(QObject):
     def __init__(self):
         super().__init__()
         
-        # Initialize instance variables
-        self._settings = QSettings(ORGANIZATION, APP_NAME)
+        # Settings file path in the root of the application
+        self._settings_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'settings.json')
+        
+        # Load settings from file
+        self._settings = self._load_settings()
         
         # Set defaults if not present
         self._set_defaults()
+        
+        # Save initial settings
+        self._save_settings()
+    
+    def _load_settings(self) -> dict:
+        """Load settings from JSON file."""
+        if os.path.exists(self._settings_file):
+            try:
+                with open(self._settings_file, 'r') as f:
+                    loaded_settings = json.load(f)
+                
+                # Decode special types
+                settings = {}
+                for key, value in loaded_settings.items():
+                    if isinstance(value, dict) and value.get('_type') == 'bytes':
+                        # Decode base64 string back to bytes
+                        settings[key] = base64.b64decode(value['data'])
+                    else:
+                        settings[key] = value
+                
+                return settings
+            except (json.JSONDecodeError, IOError):
+                # If file is corrupted or can't be read, return empty dict
+                return {}
+        return {}
+    
+    def _save_settings(self):
+        """Save settings to JSON file."""
+        try:
+            # Create a copy of settings to handle special types
+            settings_to_save = {}
+            for key, value in self._settings.items():
+                if isinstance(value, bytes):
+                    # Encode bytes as base64 string for JSON
+                    settings_to_save[key] = {
+                        '_type': 'bytes',
+                        'data': base64.b64encode(value).decode('utf-8')
+                    }
+                else:
+                    settings_to_save[key] = value
+            
+            with open(self._settings_file, 'w') as f:
+                json.dump(settings_to_save, f, indent=2)
+        except IOError as e:
+            print(f"Error saving settings: {e}")
     
     def _set_defaults(self):
         """Set default values if they don't exist."""
@@ -37,8 +88,8 @@ class SettingsManager(QObject):
         }
         
         for key, value in defaults.items():
-            if not self._settings.contains(key):
-                self._settings.setValue(key, value)
+            if key not in self._settings:
+                self._settings[key] = value
     
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -51,7 +102,7 @@ class SettingsManager(QObject):
         Returns:
             Setting value or default
         """
-        return self._settings.value(key, default)
+        return self._settings.get(key, default)
     
     def set(self, key: str, value: Any):
         """
@@ -62,7 +113,10 @@ class SettingsManager(QObject):
             value: Setting value
         """
         old_value = self.get(key)
-        self._settings.setValue(key, value)
+        self._settings[key] = value
+        
+        # Save to file
+        self._save_settings()
         
         if old_value != value:
             self.settingChanged.emit(key, value)
@@ -120,4 +174,4 @@ class SettingsManager(QObject):
     
     def sync(self):
         """Force sync settings to disk."""
-        self._settings.sync()
+        self._save_settings()
