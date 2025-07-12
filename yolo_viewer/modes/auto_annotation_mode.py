@@ -457,6 +457,9 @@ class AutoAnnotationMode(BaseMode):
         # Reload gallery with filtered images
         self._reload_gallery_with_filter()
         
+        # Select and load the first image in the filtered view
+        self._select_image_at_position(0)
+        
     def _approve_selected(self):
         """Approve annotations for selected images."""
         selected = self._gallery.get_selected_paths()
@@ -1214,6 +1217,13 @@ class AutoAnnotationMode(BaseMode):
                             
                     self._gallery.update_image_annotations(image_path, thumbnail_annotations)
                     
+        # If no filtered images, clear the canvas
+        if len(filtered_paths) == 0:
+            self._current_image_path = None
+            self._canvas.clear_canvas()
+            self._info_label.setText("No images in this category")
+            self._annotation_count_label.setText("Annotations: 0")
+                    
     def _on_dataset_manager_loaded(self, yaml_path: Path):
         """Handle dataset loaded from DatasetManager."""
         # Load the dataset YAML to get class names
@@ -1352,6 +1362,9 @@ class AutoAnnotationMode(BaseMode):
                     
         # Reload gallery with updated filter
         self._reload_gallery_with_filter()
+        
+        # Select and load the first image in the filtered view
+        self._select_image_at_position(0)
         
     def _on_category_filter_changed(self, item: QListWidgetItem):
         """Handle category filter item state changes."""
