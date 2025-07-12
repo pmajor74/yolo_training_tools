@@ -17,7 +17,7 @@ from PyQt6.QtGui import (
     QFontMetrics
 )
 
-from ..core.constants import ANNOTATION_COLORS
+from ..core.constants import ANNOTATION_COLORS, COLOR_MANAGER
 
 
 @dataclass
@@ -207,9 +207,12 @@ class ThumbnailDelegate(QStyledItemDelegate):
                 w = int(width * img_rect.width())
                 h = int(height * img_rect.height())
                 
-                # Get color
-                color = QColor(*ANNOTATION_COLORS[int(class_id) % len(ANNOTATION_COLORS)])
-                painter.setPen(QPen(color, 2))
+                # Get color using COLOR_MANAGER for colorblind-friendly colors
+                color = COLOR_MANAGER.get_qcolor(int(class_id))
+                pen_style = COLOR_MANAGER.get_pen_style(int(class_id))
+                pen = QPen(color, 2)
+                pen.setStyle(pen_style)
+                painter.setPen(pen)
                 painter.drawRect(x, y, w, h)
 
 

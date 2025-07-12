@@ -10,7 +10,8 @@ from PyQt6.QtGui import (
 
 from ..core.constants import (
     ANNOTATION_COLORS, ANNOTATION_LINE_WIDTH, 
-    BELOW_THRESHOLD_COLOR, BELOW_THRESHOLD_LINE_WIDTH
+    BELOW_THRESHOLD_COLOR, BELOW_THRESHOLD_LINE_WIDTH,
+    COLOR_MANAGER
 )
 
 
@@ -186,12 +187,16 @@ class ImageViewer(QGraphicsView):
                 if below_threshold:
                     color = QColor(*BELOW_THRESHOLD_COLOR)
                     line_width = BELOW_THRESHOLD_LINE_WIDTH
+                    pen_style = Qt.PenStyle.SolidLine
                 else:
-                    color = QColor(*ANNOTATION_COLORS[int(class_id) % len(ANNOTATION_COLORS)])
+                    # Use COLOR_MANAGER for colorblind-friendly colors
+                    color = COLOR_MANAGER.get_qcolor(int(class_id))
+                    pen_style = COLOR_MANAGER.get_pen_style(int(class_id))
                     line_width = ANNOTATION_LINE_WIDTH
                 
-                # Draw rectangle
+                # Draw rectangle with appropriate style
                 pen = QPen(color, line_width)
+                pen.setStyle(pen_style)
                 rect = self._scene.addRect(x, y, w, h, pen)
                 
                 # Draw label with class name and confidence

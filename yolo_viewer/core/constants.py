@@ -24,8 +24,17 @@ IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff']
 ANNOTATION_EXTENSION = '.txt'
 MODEL_EXTENSION = '.pt'
 
-# Colors (RGB tuples)
-ANNOTATION_COLORS = [
+# Import color generator for advanced color management
+from ..utils.color_generator import AnnotationColorManager, ColorGenerator
+
+# Initialize color manager with support for up to 80 classes
+# Default theme is Midnight Blue
+from ..utils.theme_constants import ColorTheme
+COLOR_MANAGER = AnnotationColorManager(num_classes=80, theme=ColorTheme.MIDNIGHT_BLUE)
+
+# Legacy colors (RGB tuples) - kept for backward compatibility
+# These are now replaced by the colorblind-friendly palette
+ANNOTATION_COLORS_LEGACY = [
     (255, 0, 0),      # Red
     (0, 255, 0),      # Green
     (0, 0, 255),      # Blue
@@ -37,6 +46,9 @@ ANNOTATION_COLORS = [
     (0, 255, 128),    # Spring Green
     (255, 0, 128),    # Rose
 ]
+
+# Generate colorblind-friendly colors
+ANNOTATION_COLORS = [COLOR_MANAGER.get_color(i) for i in range(80)]
 
 # Annotation display
 ANNOTATION_LINE_WIDTH = 2

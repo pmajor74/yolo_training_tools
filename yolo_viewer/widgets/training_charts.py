@@ -13,6 +13,8 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ..core.constants import COLOR_MANAGER
+
 
 class TrainingCharts(QWidget):
     """Widget for displaying real-time training metrics charts."""
@@ -199,6 +201,9 @@ Reserved for additional metrics as they become available.
         self._grid_enabled = True
         self._legend_items = {}  # Store legend line references
         
+        
+        # Get graph colors from color manager
+        self._graph_colors = COLOR_MANAGER.get_graph_colors()
         self._setup_ui()
         
     def _setup_ui(self):
@@ -531,7 +536,7 @@ Reserved for additional metrics as they become available.
         
         if self._metrics['loss']:
             steps = self._steps[-len(self._metrics['loss']):]
-            line, = self.ax.plot(steps, self._metrics['loss'], 'b-', linewidth=2, label='Total Loss')
+            line, = self.ax.plot(steps, self._metrics['loss'], color=self._graph_colors[0], linewidth=2, label='Total Loss')
             self._legend_items['Total Loss'] = line
             
             # Add smoothed line
@@ -539,7 +544,7 @@ Reserved for additional metrics as they become available.
                 try:
                     from scipy.ndimage import gaussian_filter1d
                     smoothed = gaussian_filter1d(self._metrics['loss'], sigma=5)
-                    smoothed_line, = self.ax.plot(steps, smoothed, 'r--', linewidth=1, alpha=0.7, label='Smoothed')
+                    smoothed_line, = self.ax.plot(steps, smoothed, color=self._graph_colors[1], linestyle='--', linewidth=1, alpha=0.7, label='Smoothed')
                     self._legend_items['Smoothed'] = smoothed_line
                 except ImportError:
                     # scipy not available, skip smoothing
@@ -567,21 +572,21 @@ Reserved for additional metrics as they become available.
         
         if self._metrics['loss']:
             steps = self._steps[-len(self._metrics['loss']):]
-            line, = self.ax.plot(steps, self._metrics['loss'], 'b-', linewidth=2, 
+            line, = self.ax.plot(steps, self._metrics['loss'], color=self._graph_colors[0], linewidth=2, 
                    label='Training Loss', alpha=0.8)
             self._legend_items['Training Loss'] = line
             has_data = True
             
         if self._metrics['val_loss']:
             steps = self._steps[-len(self._metrics['val_loss']):]
-            line, = self.ax.plot(steps, self._metrics['val_loss'], 'r-', linewidth=2,
+            line, = self.ax.plot(steps, self._metrics['val_loss'], color=self._graph_colors[1], linewidth=2,
                    label='Validation Loss', marker='o', markersize=4)
             self._legend_items['Validation Loss'] = line
             has_data = True
             has_val_data = True
         else:
             # Add placeholder for validation loss in legend
-            line, = self.ax.plot([], [], 'r-', linewidth=2, label='Validation Loss (pending)', 
+            line, = self.ax.plot([], [], color=self._graph_colors[1], linewidth=2, label='Validation Loss (pending)', 
                                marker='o', markersize=4, alpha=0.5)
             self._legend_items['Validation Loss'] = line
             
@@ -658,14 +663,14 @@ Reserved for additional metrics as they become available.
         
         if self._metrics['mAP50']:
             steps = self._steps[-len(self._metrics['mAP50']):]
-            line, = self.ax.plot(steps, self._metrics['mAP50'], 'g-', linewidth=2, 
+            line, = self.ax.plot(steps, self._metrics['mAP50'], color=self._graph_colors[2], linewidth=2, 
                    label='mAP@50', marker='o', markersize=3)
             self._legend_items['mAP@50'] = line
             has_data = True
             
         if self._metrics['mAP50-95']:
             steps = self._steps[-len(self._metrics['mAP50-95']):]
-            line, = self.ax.plot(steps, self._metrics['mAP50-95'], 'm-', linewidth=2,
+            line, = self.ax.plot(steps, self._metrics['mAP50-95'], color=self._graph_colors[3], linewidth=2,
                    label='mAP@50-95', marker='s', markersize=3)
             self._legend_items['mAP@50-95'] = line
             has_data = True
@@ -699,14 +704,14 @@ Reserved for additional metrics as they become available.
         
         if self._metrics['precision']:
             steps = self._steps[-len(self._metrics['precision']):]
-            line, = self.ax.plot(steps, self._metrics['precision'], 'c-', linewidth=2,
+            line, = self.ax.plot(steps, self._metrics['precision'], color=self._graph_colors[4], linewidth=2,
                    label='Precision', marker='^', markersize=3)
             self._legend_items['Precision'] = line
             has_data = True
                    
         if self._metrics['recall']:
             steps = self._steps[-len(self._metrics['recall']):]
-            line, = self.ax.plot(steps, self._metrics['recall'], 'y-', linewidth=2,
+            line, = self.ax.plot(steps, self._metrics['recall'], color=self._graph_colors[5], linewidth=2,
                    label='Recall', marker='v', markersize=3)
             self._legend_items['Recall'] = line
             has_data = True
@@ -745,7 +750,7 @@ Reserved for additional metrics as they become available.
             ax = axes[0]
             if self._metrics['loss']:
                 steps = self._steps[-len(self._metrics['loss']):]
-                line, = ax.plot(steps, self._metrics['loss'], 'b-', linewidth=1.5, label='Total')
+                line, = ax.plot(steps, self._metrics['loss'], color=self._graph_colors[0], linewidth=1.5, label='Total')
                 self._legend_items['Total'] = line
             ax.set_title('Losses', fontsize=10)
             ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')
@@ -761,7 +766,7 @@ Reserved for additional metrics as they become available.
             ax = axes[1]
             if self._metrics['mAP50']:
                 steps = self._steps[-len(self._metrics['mAP50']):]
-                line, = ax.plot(steps, self._metrics['mAP50'], 'g-', linewidth=1.5, label='mAP@50')
+                line, = ax.plot(steps, self._metrics['mAP50'], color=self._graph_colors[2], linewidth=1.5, label='mAP@50')
             ax.set_title('mAP Metrics', fontsize=10)
             ax.set_ylim(0, 1.0)
             ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')

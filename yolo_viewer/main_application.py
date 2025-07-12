@@ -10,13 +10,14 @@ from PyQt6.QtWidgets import (
     QPushButton, QWidget, QVBoxLayout, QGroupBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSlot
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtGui import QAction, QKeySequence, QActionGroup
 
 from .core import ModelCache, SettingsManager, ImageCache, DatasetManager
 from .core.constants import (
     APP_NAME, APP_VERSION, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
-    MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, AppMode, MODE_NAMES
+    MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, AppMode, MODE_NAMES, COLOR_MANAGER
 )
+from .utils.theme_constants import ColorTheme
 from .modes.dataset_editor import DatasetEditorMode
 from .modes.folder_browser_mode import FolderBrowserMode
 from .modes.model_management import ModelManagementMode
@@ -84,7 +85,7 @@ class MainApplication(QMainWindow):
         self.setCentralWidget(self.tab_widget)
         
         # Style the tab widget
-        self.tab_widget.setDocumentMode(True)
+        self.tab_widget.setDocumentMode(False)  # Disable document mode for better custom styling
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
     
     def _setup_menus(self):
@@ -129,10 +130,103 @@ class MainApplication(QMainWindow):
         # View menu
         view_menu = menubar.addMenu("&View")
         
-        self.theme_action = QAction("Toggle &Dark Mode", self)
-        self.theme_action.setShortcut("Ctrl+D")
-        self.theme_action.triggered.connect(self._on_toggle_theme)
-        view_menu.addAction(self.theme_action)
+        # Theme submenu
+        theme_menu = view_menu.addMenu("&Theme")
+        theme_menu.setToolTip("Choose application theme")
+        
+        # Create theme actions
+        self.theme_group = QActionGroup(self)
+        self.theme_group.setExclusive(True)
+        
+        # Group themes by light/dark
+        theme_menu.addSection("Dark Themes")
+        dark_themes = [
+            (ColorTheme.MIDNIGHT_BLUE, "&Midnight Blue", "Dark theme with blue accents"),
+            (ColorTheme.FOREST_DARK, "&Forest Dark", "Dark theme with green nature colors"),
+            (ColorTheme.VOLCANIC_ASH, "&Volcanic Ash", "Dark theme with warm volcanic colors"),
+            (ColorTheme.DEEP_OCEAN, "&Deep Ocean", "Dark theme with ocean blue colors"),
+            (ColorTheme.CYBERPUNK, "&Cyberpunk", "Dark theme with neon colors"),
+            (ColorTheme.DARK_AMBER, "Dark &Amber", "Dark theme with amber/gold accents"),
+            (ColorTheme.TWILIGHT_PURPLE, "&Twilight Purple", "Dark theme with purple twilight colors"),
+            (ColorTheme.CARBON_GRAY, "Carbon &Gray", "Dark monochromatic theme"),
+        ]
+        
+        for theme_id, name, tooltip in dark_themes:
+            action = QAction(name, self)
+            action.setCheckable(True)
+            action.setToolTip(tooltip)
+            action.setData(theme_id)
+            action.triggered.connect(lambda checked, t=theme_id: self._on_theme_changed(t))
+            self.theme_group.addAction(action)
+            theme_menu.addAction(action)
+            
+            # Set default theme as checked
+            if theme_id == ColorTheme.MIDNIGHT_BLUE:
+                action.setChecked(True)
+        
+        theme_menu.addSeparator()
+        theme_menu.addSection("Light Themes")
+        
+        light_themes = [
+            (ColorTheme.SOFT_PASTEL, "&Soft Pastel", "Light theme with soft pastel colors"),
+            (ColorTheme.NORDIC_LIGHT, "&Nordic Light", "Light theme with Nordic/Scandinavian colors"),
+            (ColorTheme.WARM_EARTH, "&Warm Earth", "Light theme with warm earth tones"),
+            (ColorTheme.SKY_BLUE, "Sky &Blue", "Light theme with sky and cloud colors"),
+            (ColorTheme.SPRING_MEADOW, "Spring &Meadow", "Light theme with spring nature colors"),
+            (ColorTheme.CREAM_COFFEE, "&Cream Coffee", "Light theme with coffee/cream colors"),
+            (ColorTheme.LAVENDER_MIST, "&Lavender Mist", "Light theme with soft lavender colors"),
+            (ColorTheme.MINT_FRESH, "Mint &Fresh", "Light theme with refreshing mint colors"),
+        ]
+        
+        for theme_id, name, tooltip in light_themes:
+            action = QAction(name, self)
+            action.setCheckable(True)
+            action.setToolTip(tooltip)
+            action.setData(theme_id)
+            action.triggered.connect(lambda checked, t=theme_id: self._on_theme_changed(t))
+            self.theme_group.addAction(action)
+            theme_menu.addAction(action)
+        
+        # Add accessibility themes section
+        theme_menu.addSeparator()
+        theme_menu.addSection("Accessibility Themes")
+        
+        accessibility_themes = [
+            (ColorTheme.HIGH_CONTRAST_DARK, "High Contrast &Dark", "Maximum contrast white on black"),
+            (ColorTheme.HIGH_CONTRAST_LIGHT, "High Contrast &Light", "Maximum contrast black on white"),
+            (ColorTheme.YELLOW_BLACK, "&Yellow on Black", "High visibility yellow on black (low vision)"),
+            (ColorTheme.BLACK_WHITE, "&Black on White", "Pure black on white (maximum readability)"),
+        ]
+        
+        for theme_id, name, tooltip in accessibility_themes:
+            action = QAction(name, self)
+            action.setCheckable(True)
+            action.setToolTip(tooltip)
+            action.setData(theme_id)
+            action.triggered.connect(lambda checked, t=theme_id: self._on_theme_changed(t))
+            self.theme_group.addAction(action)
+            theme_menu.addAction(action)
+        
+        # Vision-specific themes
+        theme_menu.addSeparator()
+        theme_menu.addSection("Vision-Specific Themes")
+        
+        vision_themes = [
+            (ColorTheme.DEUTERANOPIA_DARK, "&Deuteranopia Dark", "Optimized for red-green colorblindness"),
+            (ColorTheme.PROTANOPIA_DARK, "&Protanopia Dark", "Optimized for red weakness"),
+            (ColorTheme.TRITANOPIA_DARK, "&Tritanopia Dark", "Optimized for blue-yellow colorblindness"),
+            (ColorTheme.MONOCHROME_DARK, "Monochrome Dar&k", "Pure grayscale dark theme"),
+            (ColorTheme.MONOCHROME_LIGHT, "&Monochrome Light", "Pure grayscale light theme"),
+        ]
+        
+        for theme_id, name, tooltip in vision_themes:
+            action = QAction(name, self)
+            action.setCheckable(True)
+            action.setToolTip(tooltip)
+            action.setData(theme_id)
+            action.triggered.connect(lambda checked, t=theme_id: self._on_theme_changed(t))
+            self.theme_group.addAction(action)
+            theme_menu.addAction(action)
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -331,19 +425,27 @@ class MainApplication(QMainWindow):
             self.restoreGeometry(geometry)
         else:
             self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
+        
+        # Restore theme preference
+        saved_theme = self.settings.get("app_theme", ColorTheme.MIDNIGHT_BLUE)
+        if saved_theme != ColorTheme.MIDNIGHT_BLUE:
+            COLOR_MANAGER.set_theme(saved_theme)
+            # Apply theme stylesheet
+            self._apply_theme(saved_theme)
+            # Update menu to reflect saved theme
+            for action in self.theme_group.actions():
+                if action.data() == saved_theme:
+                    action.setChecked(True)
+                    break
+        else:
+            # Apply default theme
+            self._apply_theme(ColorTheme.MIDNIGHT_BLUE)
     
     def _load_stylesheet(self):
-        """Load application stylesheet."""
-        try:
-            resources_dir = Path(__file__).parent / "resources"
-            stylesheet_path = resources_dir / "styles.qss"
-            if stylesheet_path.exists():
-                with open(stylesheet_path, 'r') as f:
-                    stylesheet = f.read()
-                    # Apply stylesheet to the application, not just this window
-                    QApplication.instance().setStyleSheet(stylesheet)
-        except Exception as e:
-            print(f"Failed to load stylesheet: {e}")
+        """Load application theme."""
+        # Theme is now loaded through the theme system
+        # This method is kept for compatibility but does nothing
+        pass
     
     def showEvent(self, event):
         """Handle show event - called when window is first shown."""
@@ -428,15 +530,6 @@ class MainApplication(QMainWindow):
         QMessageBox.information(self, "Settings", "Settings dialog coming soon!")
     
     @pyqtSlot()
-    def _on_toggle_theme(self):
-        """Toggle dark mode."""
-        # TODO: Implement theme switching
-        current_theme = self.settings.get('theme', 'light')
-        new_theme = 'dark' if current_theme == 'light' else 'light'
-        self.settings.set('theme', new_theme)
-        self.statusbar.showMessage(f"Switched to {new_theme} mode", 2000)
-    
-    @pyqtSlot()
     def _on_about(self):
         """Show about dialog."""
         # Get PyTorch information
@@ -462,6 +555,32 @@ class MainApplication(QMainWindow):
             f"PyTorch: {torch_version}\n"
             f"Compute: {device_info}"
         )
+    
+    @pyqtSlot(str)
+    def _on_theme_changed(self, theme: str):
+        """Handle theme change."""
+        # Update the color manager
+        COLOR_MANAGER.set_theme(theme)
+        
+        # Apply theme stylesheet
+        self._apply_theme(theme)
+        
+        # Save preference
+        self.settings.set("app_theme", theme)
+        
+        # Notify all modes to refresh their displays
+        for mode_widget in self.mode_widgets.values():
+            if hasattr(mode_widget, 'refresh_colors'):
+                mode_widget.refresh_colors()
+        
+        # Update status
+        self.statusbar.showMessage(f"Theme changed to: {theme}", 3000)
+    
+    def _apply_theme(self, theme: str):
+        """Apply theme stylesheet to the application."""
+        theme_manager = COLOR_MANAGER.get_theme_manager()
+        stylesheet = theme_manager.generate_stylesheet(theme)
+        QApplication.instance().setStyleSheet(stylesheet)
     
     
     @pyqtSlot(str)

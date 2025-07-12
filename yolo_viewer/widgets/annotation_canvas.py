@@ -17,7 +17,7 @@ from PyQt6.QtGui import (
     QUndoCommand, QUndoStack
 )
 
-from ..core.constants import ANNOTATION_COLORS, ANNOTATION_LINE_WIDTH
+from ..core.constants import ANNOTATION_COLORS, ANNOTATION_LINE_WIDTH, COLOR_MANAGER
 
 
 class ToolMode(Enum):
@@ -86,13 +86,16 @@ class AnnotationItem(QGraphicsRectItem):
         
     def _update_appearance(self):
         """Update visual appearance based on selection state."""
-        color = QColor(*ANNOTATION_COLORS[self.annotation.class_id % len(ANNOTATION_COLORS)])
+        # Use COLOR_MANAGER for colorblind-friendly colors
+        color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
+        pen_style = COLOR_MANAGER.get_pen_style(self.annotation.class_id)
         
         if self.isSelected():
             pen = QPen(color, ANNOTATION_LINE_WIDTH + 1)
-            pen.setStyle(Qt.PenStyle.SolidLine)
+            pen.setStyle(pen_style)
         else:
             pen = QPen(color, ANNOTATION_LINE_WIDTH)
+            pen.setStyle(pen_style)
         
         self.setPen(pen)
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -194,11 +197,15 @@ class AnnotationItem(QGraphicsRectItem):
         bg_rect = QRectF(rect.left(), rect.top() - text_rect.height() - 4,
                         text_rect.width() + 8, text_rect.height() + 4)
         
-        color = QColor(*ANNOTATION_COLORS[self.annotation.class_id % len(ANNOTATION_COLORS)])
-        painter.fillRect(bg_rect, color)
+        # Use COLOR_MANAGER for background color
+        bg_color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
+        painter.fillRect(bg_rect, bg_color)
         
-        # Draw text
-        painter.setPen(QPen(Qt.GlobalColor.white))
+        # Use contrasting text color for better readability
+        text_color = QColor(*COLOR_MANAGER.get_text_color(self.annotation.class_id))
+        
+        # Draw text with contrasting color
+        painter.setPen(QPen(text_color))
         painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)
         
         painter.restore()
