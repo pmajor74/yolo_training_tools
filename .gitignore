@@ -77,3 +77,4 @@ azdo_task_agent/app/config/settings.py
 .claude
 CLAUDE.md
 settings.json
+models/
