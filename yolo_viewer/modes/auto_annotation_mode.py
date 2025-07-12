@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QSplitter, QFileDialog, QMessageBox, QApplication,
     QListWidgetItem, QMenu
 )
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QObject, QEvent, QPoint
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QObject, QEvent, QPoint, QTimer
 from PyQt6.QtGui import QCursor, QAction
 
 from .base_mode import BaseMode
@@ -464,14 +464,18 @@ class AutoAnnotationMode(BaseMode):
             QMessageBox.information(self, "No Selection", "Please select images to approve.")
             return
             
+        # Store current index position before reloading
+        selected_indices = self._gallery.list_view.selectedIndexes()
+        current_row = selected_indices[0].row() if selected_indices else 0
+        
         # Approve proposals
         self._image_processor.approve_proposals(selected)
         
         # Update UI
         self._reload_gallery_with_filter()
         
-        # Always advance to next image after approval
-        self._select_next_image()
+        # Select and load the next available image
+        self._select_image_at_position(current_row)
                               
     def _reject_selected(self):
         """Reject annotations for selected images."""
@@ -480,28 +484,42 @@ class AutoAnnotationMode(BaseMode):
             QMessageBox.information(self, "No Selection", "Please select images to reject.")
             return
             
+        # Store current index position before reloading
+        selected_indices = self._gallery.list_view.selectedIndexes()
+        current_row = selected_indices[0].row() if selected_indices else 0
+        
         # Reject proposals
         self._image_processor.reject_proposals(selected)
         
         # Update UI
         self._reload_gallery_with_filter()
         
-        # Always advance to next image after rejection
-        self._select_next_image()
+        # Select and load the next available image
+        self._select_image_at_position(current_row)
                               
     def _approve_current(self):
         """Approve current image annotations."""
         if self._current_image_path:
+            # Find current image position in gallery
+            current_row = self._find_image_row_in_gallery(self._current_image_path)
+            
             self._image_processor.approve_proposals([self._current_image_path])
             self._reload_gallery_with_filter()
-            self._select_next_image()
+            
+            # Select image at same position
+            self._select_image_at_position(current_row if current_row >= 0 else 0)
             
     def _reject_current(self):
         """Reject current image annotations."""
         if self._current_image_path:
+            # Find current image position in gallery
+            current_row = self._find_image_row_in_gallery(self._current_image_path)
+            
             self._image_processor.reject_proposals([self._current_image_path])
             self._reload_gallery_with_filter()
-            self._select_next_image()
+            
+            # Select image at same position
+            self._select_image_at_position(current_row if current_row >= 0 else 0)
             
     def _select_next_image(self):
         """Select the next available image in the gallery."""
@@ -517,17 +535,62 @@ class AutoAnnotationMode(BaseMode):
                 self._gallery.list_view.selectionModel().select(next_index, 
                     self._gallery.list_view.selectionModel().SelectionFlag.ClearAndSelect)
                 # Load the next image
-                item = self._gallery._model.item(next_row)
-                if item:
-                    image_path = item.data(Qt.ItemDataRole.UserRole)
-                    if image_path:
-                        self._load_image_for_editing(image_path)
+                item = self._gallery._model.get_item(next_row)
+                if item and item.image_path:
+                    self._load_image_for_editing(item.image_path)
             else:
                 # No more images, clear current image
                 self._current_image_path = None
                 self._canvas.clear_canvas()
                 self._info_label.setText("No more images to review")
                 self._annotation_count_label.setText("Annotations: 0")
+                
+    def _find_image_row_in_gallery(self, image_path: str) -> int:
+        """Find the row index of an image in the gallery."""
+        for row in range(self._gallery._model.rowCount()):
+            item = self._gallery._model.get_item(row)
+            if item and item.image_path == image_path:
+                return row
+        return -1
+        
+    def _select_image_at_position(self, position: int):
+        """Select and load image at the given position in the gallery."""
+        # Use QTimer to ensure gallery is fully updated before selecting
+        def do_selection():
+            total_items = self._gallery._model.rowCount()
+            
+            if total_items == 0:
+                # No images left in gallery
+                self._current_image_path = None
+                self._canvas.clear_canvas()
+                self._info_label.setText("No more images to review")
+                self._annotation_count_label.setText("Annotations: 0")
+                return
+                
+            # Adjust position if it's beyond the current items
+            adjusted_position = position
+            if adjusted_position >= total_items:
+                adjusted_position = total_items - 1
+            elif adjusted_position < 0:
+                adjusted_position = 0
+                
+            # Select the item at the position
+            index = self._gallery._model.index(adjusted_position, 0)
+            self._gallery.list_view.setCurrentIndex(index)
+            self._gallery.list_view.selectionModel().select(index, 
+                self._gallery.list_view.selectionModel().SelectionFlag.ClearAndSelect)
+                
+            # Ensure the selection is visible
+            self._gallery.list_view.scrollTo(index)
+                
+            # Load the image - get the actual item data
+            item = self._gallery._model.get_item(adjusted_position)
+            if item and item.image_path:
+                # Load the image directly
+                self._load_image_for_editing(item.image_path)
+                    
+        # Execute selection with a small delay to ensure gallery is ready
+        QTimer.singleShot(10, do_selection)
             
     def _export_annotations(self):
         """Export approved annotations."""
@@ -594,7 +657,11 @@ class AutoAnnotationMode(BaseMode):
         
         # Load image to canvas
         pixmap = self._image_processor.load_image_for_editing(image_path)
-        self._canvas.load_image(pixmap)
+        if pixmap and not pixmap.isNull():
+            self._canvas.load_image(pixmap)
+        else:
+            print(f"Warning: Failed to load image {image_path}")
+            return
         
         # Ensure canvas has the current class names
         if self._dataset_class_names:
@@ -607,6 +674,9 @@ class AutoAnnotationMode(BaseMode):
         # Update info
         self._info_label.setText(f"Editing: {Path(image_path).name}")
         self._update_annotation_count()
+        
+        # Force canvas update
+        self._canvas.update()
         
     def _on_annotation_added(self, annotation: Annotation):
         """Handle annotation added."""
