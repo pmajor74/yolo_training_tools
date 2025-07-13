@@ -701,6 +701,9 @@ class MainApplication(QMainWindow):
         
         # Then activate the initial tab
         self._activate_initial_tab()
+        
+        # Check if using CPU and show warning
+        self._check_cpu_warning()
     
     def _activate_initial_tab(self):
         """Activate the initial tab after window is shown."""
@@ -712,6 +715,27 @@ class MainApplication(QMainWindow):
             current_widget = self.mode_widgets.get(AppMode.MODEL_MANAGEMENT)
             if current_widget and hasattr(current_widget, 'activate'):
                 current_widget.activate()
+    
+    def _check_cpu_warning(self):
+        """Check if using CPU and show warning on startup."""
+        # Get device status from the status widget
+        device_type = self.device_status_widget.get_current_device()
+        
+        # Show warning if using CPU
+        if device_type == "cpu":
+            QMessageBox.warning(
+                self,
+                "CPU Mode Detected",
+                "Your system is currently using CPU for processing.\n\n"
+                "This will result in significantly slower performance for:\n"
+                "• Model training (10-100x slower)\n"
+                "• Inference and auto-annotation (5-20x slower)\n\n"
+                "For optimal performance, consider using a system with:\n"
+                "• NVIDIA GPU with CUDA support\n"
+                "• Apple Silicon Mac with MPS support\n\n"
+                "You can continue using the application, but operations will take longer.",
+                QMessageBox.StandardButton.Ok
+            )
 
 
 def main():
