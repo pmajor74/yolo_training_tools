@@ -80,7 +80,7 @@ class TrainingHandler(QObject):
             'data': str(dataset_yaml_path),
             'model': training_config.get('model', 'yolov8n.pt'),
             'epochs': training_config.get('epochs', 100),
-            'batch': training_config.get('batch', 16),
+            'batch': training_config.get('batch', 8),
             'imgsz': training_config.get('imgsz', 640),
             'lr0': training_config.get('lr0', 0.01),
             'device': training_config.get('device', 'cpu'),

@@ -243,7 +243,7 @@ Train YOLO models with comprehensive configuration options and real-time monitor
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | Epochs | 100 | Number of complete passes through the dataset |
-| Batch Size | 16 | Images per batch (reduce for limited GPU memory) |
+| Batch Size | 8 | Images per batch (reduce for limited GPU memory) |
 | Image Size | 640 | Input image resolution (width and height) |
 | Learning Rate | 0.01 | Initial learning rate for optimizer |
 | Patience | 20 | Epochs to wait before early stopping |

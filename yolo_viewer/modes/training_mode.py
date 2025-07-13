@@ -142,7 +142,7 @@ class TrainingMode(BaseMode):
         batch_layout.addWidget(QLabel("Batch Size:"))
         self.batch_spin = QSpinBox()
         self.batch_spin.setRange(1, 64)
-        self.batch_spin.setValue(16)
+        self.batch_spin.setValue(8)
         batch_layout.addWidget(self.batch_spin)
         batch_layout.addStretch()
         params_layout.addLayout(batch_layout)

@@ -486,7 +486,7 @@ class UIBuilder(QObject):
         batch_layout.addWidget(QLabel("Batch:"))
         self.batch_spin = QSpinBox()
         self.batch_spin.setRange(1, 128)
-        self.batch_spin.setValue(16)
+        self.batch_spin.setValue(8)
         batch_layout.addWidget(self.batch_spin)
         params_layout.addLayout(batch_layout)
         

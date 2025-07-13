@@ -646,8 +646,58 @@ class AutoAnnotationMode(BaseMode):
             
     def _run_quality_assessment(self):
         """Run quality assessment on annotations."""
-        QMessageBox.information(self, "Quality Assessment", 
-                              "Quality assessment feature coming soon!")
+        if not self._current_folder:
+            QMessageBox.warning(self, "No Session", 
+                              "Please start an annotation session first.")
+            return
+            
+        # Import here to avoid circular imports
+        from ..dialogs import QualityControlDialog
+        from ..utils.auto_annotation_manager import AutoAnnotationSession
+        
+        # Create session object for the dialog
+        session = AutoAnnotationSession(
+            session_id=datetime.now().isoformat(),
+            folder_path=str(self._current_folder),
+            created_at=datetime.now(),
+            total_images=self._session_stats.total_images,
+            processed_images=self._session_stats.processed_images
+        )
+        
+        # Get annotations from the image processor
+        if self._image_processor.annotation_manager and self._image_processor.annotation_manager.current_session:
+            # Get proposals from the annotation manager's current session
+            manager_session = self._image_processor.annotation_manager.current_session
+            
+            # Copy proposals with their approval status
+            for img_path, proposals in manager_session.proposals.items():
+                session.proposals[img_path] = proposals
+                
+            # Also check for any modified annotations in the image processor
+            for img_path in self._image_processor.all_processed_images:
+                annotations = self._image_processor.get_annotations_for_image(img_path)
+                if annotations and img_path not in session.proposals:
+                    # Convert canvas annotations to proposals
+                    proposals = []
+                    for ann in annotations:
+                        from ..utils.auto_annotation_manager import AnnotationProposal
+                        proposal = AnnotationProposal(
+                            class_id=ann.class_id,
+                            bbox=(ann.rect.x(), ann.rect.y(), ann.rect.width(), ann.rect.height()),
+                            confidence=ann.confidence,
+                            image_path=img_path,
+                            is_approved=getattr(ann, 'is_approved', False),
+                            is_modified=getattr(ann, 'is_modified', False)
+                        )
+                        proposals.append(proposal)
+                    session.proposals[img_path] = proposals
+        
+        # Show dialog
+        dialog = QualityControlDialog(session, self)
+        # Pass class names if available
+        if self._dataset_class_names:
+            dialog.class_names = self._dataset_class_names
+        dialog.exec()
                               
     def _run_active_learning(self):
         """Run active learning sample selection."""
