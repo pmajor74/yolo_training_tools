@@ -14,12 +14,20 @@ Patrick Major
 - [Text based tutorial](https://github.com/pmajor74/yolo_training_tools/blob/main/readme.tutorial.md)
 
 ## Python Versions
-- Python 3.10 to Pyton 3.12 (as per https://docs.ultralytics.com/quickstart).
-- This has been tested working on Windows with both Pytorch CPU (default with Ultralytics) and Nvidia GPU (CUDA 12.8).
-- Linux testing pending, please give feedack if you have this running on Linux.
+- Python 3.10 to Python 3.13 (as per https://docs.ultralytics.com/quickstart).
+- This has been tested working on Windows with both PyTorch CPU (default with Ultralytics) and Nvidia GPU (CUDA 12.8).
+- Linux testing pending, please give feedback if you have this running on Linux.
+- Application includes CPU mode detection with performance warnings.
+
+## Version Information
+- **Current Version**: v2.0.1
+- **Application Name**: Majorsoft YOLO Dataset Viewer
+- **Framework**: PyQt6 with comprehensive UI improvements
 
 ## Upcoming Features
 - N8N integration examples
+- Additional model format support
+- Enhanced batch processing capabilities
 
 ## Contributions
 Just drop me a line at codingwithoutbugs@gmail.com and let me now how you're using this. 
@@ -29,6 +37,12 @@ While this should work on a linux based system, it has only been tested using Wi
 
 ### GPU Support
 
+The application includes comprehensive device detection and optimization:
+- **Automatic GPU Detection** - CUDA support with real-time status monitoring
+- **CPU Mode Warnings** - Performance expectations and optimization tips
+- **Memory Management** - Automatic batch size adjustment for available GPU memory
+- **Device Status Widget** - Live hardware monitoring in the status bar
+
 ## 🌟 Features
 
 - **Visual Dataset Editor** - Create and modify bounding box annotations with an intuitive drawing interface
@@ -37,8 +51,14 @@ While this should work on a linux based system, it has only been tested using Wi
 - **Real-time Training** - Monitor training progress with live charts, metrics, and customizable augmentation
 - **Model Management** - Easy model loading and switching between different weights
 - **Dataset Splitting** - Automatically organize datasets into train/val/test sets with validation
-- **Dark Theme UI** - Eye-friendly interface for extended annotation sessions
-- **GPU/CPU Status Indicator** - Real-time display of compute device in status bar
+- **Advanced Theme System** - 21 professional themes including:
+  - 8 Dark themes (Midnight Blue, Forest Dark, Volcanic Ash, etc.)
+  - 8 Light themes (Soft Pastel, Nordic Light, Warm Earth, etc.)
+  - 4 High-contrast accessibility themes
+  - 5 Colorblind-friendly themes (Deuteranopia, Protanopia, Tritanopia, Monochrome)
+- **GPU/CPU Status Indicator** - Real-time display of compute device and performance warnings
+- **Quality Control System** - Advanced annotation quality assessment with 12+ metrics
+- **Options Dialog** - Configurable processing settings and worker thread management
 
 ## 📋 Table of Contents
 
@@ -81,7 +101,7 @@ cd yolo8_training_tools
 installer.cmd
 ```
 
-This will automatically create a virtual environment and install all dependencies using UV package manager. If you want to use pip, just open the installer.cmd and remove the UV from the pip install line or follow the manual installation steps.
+This will automatically create a virtual environment and install all dependencies.
 
 ### Manual Installation
 
@@ -143,8 +163,9 @@ The various yolov models listed are default vanilla models and will be downloade
 **How to Use:**
 1. **Discovered Models**: Double-click any model in the list to load it
 2. **External Models**: Click "📁 Browse" to load `.pt` files from other locations
-3. The loaded model becomes available across all modes
-4. Current model status is shown in the top toolbar
+3. **Find Models in Project**: Automatically discover all `.pt` files in the project
+4. The loaded model becomes available across all modes
+5. Current model status is shown in the top toolbar with device information
 
 ### Dataset Editor
 
@@ -242,8 +263,8 @@ Train YOLO models with comprehensive configuration options and real-time monitor
 **Training Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| Epochs | 100 | Number of complete passes through the dataset |
-| Batch Size | 8 | Images per batch (reduce for limited GPU memory) |
+| Epochs | 25-100 | Number of complete passes through the dataset |
+| Batch Size | 8-16 | Images per batch |
 | Image Size | 640 | Input image resolution (width and height) |
 | Learning Rate | 0.01 | Initial learning rate for optimizer |
 | Patience | 20 | Epochs to wait before early stopping |
@@ -276,16 +297,20 @@ The training mode includes comprehensive augmentation settings with tooltips:
 
 ### Auto-Annotation Mode
 
-The crown jewel for efficient dataset expansion - use existing models to annotate new data with intelligent confidence-based review and optional workflow automation.
+The crown jewel for efficient dataset expansion - use existing models to annotate new data with intelligent confidence-based review, quality control system, and optional workflow automation.
 
 **Key Features:**
 - Three-tier confidence system (High/Medium/Low)
-- Interactive annotation editing
-- Batch operations
-- Quality metrics and statistics
-- Category-based filtering
-- Optional workflow automation
-- Support for already annotated images
+- Interactive annotation editing with colorblind-friendly colors
+- Batch operations with progress tracking
+- **Advanced Quality Control Dialog** with 12+ metrics:
+  - Coverage analysis and confidence distribution
+  - Class balance checking and annotation density
+  - Overlap analysis and size distribution
+  - Export quality assessment reports
+- Category-based filtering and approval workflow
+- **Active Learning Pipeline** - Integrated training with iterative improvement
+- Support for already annotated images with conflict resolution
 
 **Confidence Thresholds:**
 | Level | Range | Color | Action |
@@ -384,6 +409,15 @@ dataset/
 | `Ctrl+S` | Save (context-dependent) |
 | `Ctrl+Q` | Quit application |
 | `Tab` | Switch between modes |
+| `F11` | Toggle fullscreen (where applicable) |
+
+### Auto-Annotation Mode
+| Key | Action |
+|-----|--------|
+| `A` | Approve selected images |
+| `R` | Reject selected images |
+| `Space` | Toggle image selection |
+| `Ctrl+A` | Select all visible images |
 
 ### Dataset Editor & Annotation Canvas
 | Key | Action |
@@ -578,23 +612,28 @@ Retrain Improved Model
 - Check console for errors
 
 **Device shows CPU instead of GPU**
-- Verify CUDA installation
+- Application will show CPU mode warning on startup if no GPU detected
+- Verify CUDA installation and driver compatibility
 - Check PyTorch GPU support: `python -c "import torch; print(torch.cuda.is_available())"`
-- Reinstall CUDA-enabled PyTorch
+- Reinstall CUDA-enabled PyTorch matching your CUDA version
+- Check Device Status Widget in the status bar for real-time information
 
 ### Performance Optimization
 
 **Slow Training:**
-1. Verify GPU is being used (check status bar)
-2. Reduce image size or batch size
-3. Enable image caching
-4. Use SSD for dataset storage
+1. Verify GPU is being used (check Device Status Widget in status bar)
+2. Reduce batch size if getting memory errors (application auto-adjusts)
+3. Use training presets (Quick/Standard/Full) for appropriate duration
+4. Enable image caching for datasets under 10GB
+5. Use SSD for dataset storage
+6. Configure worker threads in Options dialog
 
 **Slow Inference:**
-1. Use GPU if available
-2. Reduce image size
-3. Process fewer images at once
-4. Use lighter model (yolov8n)
+1. Use GPU if available (status shown in Device Status Widget)
+2. Reduce image size in processing settings
+3. Process fewer images at once in batch operations
+4. Use lighter model (yolov8n) for faster inference
+5. Adjust worker thread count in Options dialog
 
 ## 📊 Understanding Metrics
 
@@ -621,10 +660,11 @@ This project is licensed under the  Apache 2.0 License - see the LICENSE file fo
 
 ## 🙏 Acknowledgments
 
-- Built with [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
-- UI powered by [PyQt6](https://www.riverbankcomputing.com/software/pyqt/)
-- Charts by [pyqtgraph](https://www.pyqtgraph.org/)
-- Fast package management by [uv](https://github.com/astral-sh/uv)
+- Built with [Ultralytics YOLOv8/YOLO11](https://github.com/ultralytics/ultralytics)
+- UI powered by [PyQt6](https://www.riverbankcomputing.com/software/pyqt/) with professional theme system
+- Charts by [pyqtgraph](https://www.pyqtgraph.org/) for real-time training visualization
+- Accessibility features designed for inclusive machine learning workflows
+- Tutorial dataset: 300+ barcode images for comprehensive learning
 
 ---
 

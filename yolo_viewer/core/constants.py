@@ -4,8 +4,8 @@ from enum import Enum, auto
 
 # Application info
 APP_NAME = "Majorsoft YOLO Dataset Viewer"
-APP_VERSION = "2.0.0"
-ORGANIZATION = "YOLOTools"
+APP_VERSION = "2.0.1"
+ORGANIZATION = "Majorsoft"
 
 # Window defaults
 DEFAULT_WINDOW_WIDTH = 1400
