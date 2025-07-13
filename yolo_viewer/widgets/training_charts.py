@@ -746,16 +746,30 @@ Reserved for additional metrics as they become available.
             axes.append(ax)
             
         # Plot losses in first subplot
-        if any(self._metrics[k] for k in ['loss', 'box_loss', 'cls_loss']):
+        if any(self._metrics[k] for k in ['loss', 'box_loss', 'cls_loss', 'dfl_loss']):
             ax = axes[0]
             if self._metrics['loss']:
                 steps = self._steps[-len(self._metrics['loss']):]
                 line, = ax.plot(steps, self._metrics['loss'], color=self._graph_colors[0], linewidth=1.5, label='Total')
                 self._legend_items['Total'] = line
-            ax.set_title('Losses', fontsize=10)
+            if self._metrics['box_loss']:
+                steps = self._steps[-len(self._metrics['box_loss']):]
+                line, = ax.plot(steps, self._metrics['box_loss'], color=self._graph_colors[1], linewidth=1.5, label='Box', alpha=0.7)
+                self._legend_items['Box'] = line
+            if self._metrics['cls_loss']:
+                steps = self._steps[-len(self._metrics['cls_loss']):]
+                line, = ax.plot(steps, self._metrics['cls_loss'], color=self._graph_colors[2], linewidth=1.5, label='Class', alpha=0.7)
+                self._legend_items['Class'] = line
+            if self._metrics['dfl_loss']:
+                steps = self._steps[-len(self._metrics['dfl_loss']):]
+                line, = ax.plot(steps, self._metrics['dfl_loss'], color=self._graph_colors[3], linewidth=1.5, label='DFL', alpha=0.7)
+                self._legend_items['DFL'] = line
+            ax.set_title('Loss Components', fontsize=10)
+            ax.set_xlabel('Steps', fontsize=8)
+            ax.set_ylabel('Loss', fontsize=8)
             ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')
             if self._legend_items:
-                legend = ax.legend(fontsize=8)
+                legend = ax.legend(fontsize=8, loc='upper right')
                 # Store reference for crosshair
                 if i == 0:
                     self.ax = ax
@@ -766,17 +780,63 @@ Reserved for additional metrics as they become available.
             ax = axes[1]
             if self._metrics['mAP50']:
                 steps = self._steps[-len(self._metrics['mAP50']):]
-                line, = ax.plot(steps, self._metrics['mAP50'], color=self._graph_colors[2], linewidth=1.5, label='mAP@50')
+                line, = ax.plot(steps, self._metrics['mAP50'], color=self._graph_colors[2], linewidth=1.5, label='mAP@50', marker='o', markersize=3)
+                self._legend_items['mAP@50'] = line
+            if self._metrics['mAP50-95']:
+                steps = self._steps[-len(self._metrics['mAP50-95']):]
+                line, = ax.plot(steps, self._metrics['mAP50-95'], color=self._graph_colors[3], linewidth=1.5, label='mAP@50-95', marker='s', markersize=3)
+                self._legend_items['mAP@50-95'] = line
             ax.set_title('mAP Metrics', fontsize=10)
+            ax.set_xlabel('Steps', fontsize=8)
+            ax.set_ylabel('mAP', fontsize=8)
             ax.set_ylim(0, 1.0)
             ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')
-            if self._metrics['mAP50']:
-                ax.legend(fontsize=8)
+            if self._metrics['mAP50'] or self._metrics['mAP50-95']:
+                ax.legend(fontsize=8, loc='lower right')
             self._style_axes(ax)
             
-        # Hide unused subplots
-        for i in range(2, 4):
-            axes[i].set_visible(False)
+        # Plot precision & recall in third subplot
+        if any(self._metrics[k] for k in ['precision', 'recall']):
+            ax = axes[2]
+            if self._metrics['precision']:
+                steps = self._steps[-len(self._metrics['precision']):]
+                line, = ax.plot(steps, self._metrics['precision'], color=self._graph_colors[4], linewidth=1.5, label='Precision', marker='^', markersize=3)
+                self._legend_items['Precision'] = line
+            if self._metrics['recall']:
+                steps = self._steps[-len(self._metrics['recall']):]
+                line, = ax.plot(steps, self._metrics['recall'], color=self._graph_colors[5], linewidth=1.5, label='Recall', marker='v', markersize=3)
+                self._legend_items['Recall'] = line
+            ax.set_title('Precision & Recall', fontsize=10)
+            ax.set_xlabel('Steps', fontsize=8)
+            ax.set_ylabel('Value', fontsize=8)
+            ax.set_ylim(0, 1.0)
+            ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')
+            if self._metrics['precision'] or self._metrics['recall']:
+                ax.legend(fontsize=8, loc='lower right')
+            self._style_axes(ax)
+        else:
+            axes[2].set_visible(False)
+            
+        # Plot train vs validation loss in fourth subplot
+        if any(self._metrics[k] for k in ['loss', 'val_loss']):
+            ax = axes[3]
+            if self._metrics['loss']:
+                steps = self._steps[-len(self._metrics['loss']):]
+                line, = ax.plot(steps, self._metrics['loss'], color=self._graph_colors[0], linewidth=1.5, label='Train', alpha=0.8)
+                self._legend_items['Train Loss'] = line
+            if self._metrics['val_loss']:
+                steps = self._steps[-len(self._metrics['val_loss']):]
+                line, = ax.plot(steps, self._metrics['val_loss'], color=self._graph_colors[1], linewidth=1.5, label='Val', marker='o', markersize=3)
+                self._legend_items['Val Loss'] = line
+            ax.set_title('Train vs Val Loss', fontsize=10)
+            ax.set_xlabel('Steps', fontsize=8)
+            ax.set_ylabel('Loss', fontsize=8)
+            ax.grid(self._grid_enabled, alpha=0.3, linestyle='--')
+            if self._metrics['loss'] or self._metrics['val_loss']:
+                ax.legend(fontsize=8, loc='upper right')
+            self._style_axes(ax)
+        else:
+            axes[3].set_visible(False)
             
         self.figure.suptitle('Training Metrics Overview', fontsize=12, fontweight='bold', y=0.98)
         

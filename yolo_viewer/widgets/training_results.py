@@ -736,15 +736,15 @@ class TrainingResults(QWidget):
         plot_widget.getAxis('bottom').setTextPen('#cccccc')
         plot_widget.getAxis('left').setTextPen('#cccccc')
         
-        # Common metrics to plot with better descriptions
+        # Common metrics to plot with better descriptions and more distinguishable colors
         metrics_to_plot = [
-            ('train/box_loss', 'Box Loss (Bounding Box Regression)', '#ff6b6b'),
-            ('train/cls_loss', 'Class Loss (Classification Accuracy)', '#4ecdc4'),
-            ('train/dfl_loss', 'DFL Loss (Distribution Focal Loss)', '#45b7d1'),
-            ('metrics/precision(B)', 'Precision (True Positives / All Positives)', '#96ceb4'),
-            ('metrics/recall(B)', 'Recall (True Positives / All Ground Truth)', '#feca57'),
-            ('metrics/mAP50(B)', 'mAP@50 (Mean Avg Precision @ IoU=0.5)', '#ee5a6f'),
-            ('metrics/mAP50-95(B)', 'mAP@50-95 (Mean Avg Precision @ IoU=0.5:0.95)', '#a55eea'),
+            ('train/box_loss', 'Box Loss (Bounding Box Regression)', '#ff3838'),  # Bright red
+            ('train/cls_loss', 'Class Loss (Classification Accuracy)', '#00d4aa'),  # Teal/cyan
+            ('train/dfl_loss', 'DFL Loss (Distribution Focal Loss)', '#ffa726'),  # Orange
+            ('metrics/precision(B)', 'Precision (True Positives / All Positives)', '#66bb6a'),  # Green
+            ('metrics/recall(B)', 'Recall (True Positives / All Ground Truth)', '#ab47bc'),  # Purple
+            ('metrics/mAP50(B)', 'mAP@50 (Mean Avg Precision @ IoU=0.5)', '#42a5f5'),  # Light blue
+            ('metrics/mAP50-95(B)', 'mAP@50-95 (Mean Avg Precision @ IoU=0.5:0.95)', '#ffee58'),  # Yellow
         ]
         
         # Extract epochs
@@ -800,13 +800,13 @@ class TrainingResults(QWidget):
         
         # Add detailed metric key/legend
         metric_key = QLabel("""<b>Metric Key:</b><br>
-<span style='color: #ff6b6b;'>━━</span> <b>Box Loss:</b> Bounding box regression accuracy (lower is better)<br>
-<span style='color: #4ecdc4;'>━━</span> <b>Class Loss:</b> Object classification accuracy (lower is better)<br>
-<span style='color: #45b7d1;'>━━</span> <b>DFL Loss:</b> Distribution focal loss for precise box edges (lower is better)<br>
-<span style='color: #96ceb4;'>━━</span> <b>Precision:</b> % of detections that are correct (higher is better, 0-1 scale)<br>
-<span style='color: #feca57;'>━━</span> <b>Recall:</b> % of actual objects detected (higher is better, 0-1 scale)<br>
-<span style='color: #ee5a6f;'>━━</span> <b>mAP@50:</b> Mean Average Precision at 50% IoU threshold (higher is better, 0-1 scale)<br>
-<span style='color: #a55eea;'>━━</span> <b>mAP@50-95:</b> Mean Average Precision averaged from 50-95% IoU (higher is better, 0-1 scale)<br>
+<span style='color: #ff3838;'>━━</span> <b>Box Loss:</b> Bounding box regression accuracy (lower is better)<br>
+<span style='color: #00d4aa;'>━━</span> <b>Class Loss:</b> Object classification accuracy (lower is better)<br>
+<span style='color: #ffa726;'>━━</span> <b>DFL Loss:</b> Distribution focal loss for precise box edges (lower is better)<br>
+<span style='color: #66bb6a;'>━━</span> <b>Precision:</b> % of detections that are correct (higher is better, 0-1 scale)<br>
+<span style='color: #ab47bc;'>━━</span> <b>Recall:</b> % of actual objects detected (higher is better, 0-1 scale)<br>
+<span style='color: #42a5f5;'>━━</span> <b>mAP@50:</b> Mean Average Precision at 50% IoU threshold (higher is better, 0-1 scale)<br>
+<span style='color: #ffee58;'>━━</span> <b>mAP@50-95:</b> Mean Average Precision averaged from 50-95% IoU (higher is better, 0-1 scale)<br>
 <br>
 <i>💡 Tip: Use mouse wheel to zoom, drag to pan. Validation metrics (Precision, Recall, mAP) appear periodically during validation phases.</i>""")
         metric_key.setWordWrap(True)
