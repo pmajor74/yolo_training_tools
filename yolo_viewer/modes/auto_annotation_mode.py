@@ -229,7 +229,6 @@ class AutoAnnotationMode(BaseMode):
         self._ui_builder.rejectSelected.connect(self._reject_selected)
         self._ui_builder.exportAnnotations.connect(self._export_annotations)
         self._ui_builder.qualityAssessment.connect(self._run_quality_assessment)
-        self._ui_builder.activeLearning.connect(self._run_active_learning)
         self._ui_builder.moveToRejected.connect(self._move_selected_to_rejected)
         self._ui_builder.selectAllThumbnails.connect(self._select_all_thumbnails)
         self._ui_builder.selectNoneThumbnails.connect(self._select_none_thumbnails)
@@ -698,11 +697,6 @@ class AutoAnnotationMode(BaseMode):
         if self._dataset_class_names:
             dialog.class_names = self._dataset_class_names
         dialog.exec()
-                              
-    def _run_active_learning(self):
-        """Run active learning sample selection."""
-        QMessageBox.information(self, "Active Learning", 
-                              "Active learning feature coming soon!")
                               
     def _load_image_for_editing(self, image_path: str):
         """Load image into annotation editor."""

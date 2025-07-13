@@ -571,11 +571,6 @@ class UIBuilder(QObject):
         self.quality_btn.clicked.connect(self.qualityAssessment.emit)
         actions_layout.addWidget(self.quality_btn)
         
-        # Active learning
-        self.active_learning_btn = QPushButton("Active Learning")
-        self.active_learning_btn.clicked.connect(self.activeLearning.emit)
-        actions_layout.addWidget(self.active_learning_btn)
-        
         # Add separator
         actions_layout.addSpacing(10)
         
