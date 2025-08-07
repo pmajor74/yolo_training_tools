@@ -1,3 +1,4 @@
+/tif_example
 /auto_annotation_demo
 *.jpg
 !tutorial_test_set
