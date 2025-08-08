@@ -4,7 +4,10 @@ from pathlib import Path
 from typing import Optional, List, Dict, Set, Tuple
 from enum import Enum
 import shutil
+import tempfile
+import os
 from dataclasses import dataclass
+from PIL import Image
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
@@ -72,6 +75,58 @@ class InferenceThread(QThread):
         self.confidence_threshold = confidence_threshold
         self._is_running = True
     
+    def _prepare_image_for_inference(self, img_path: Path) -> str:
+        """Prepare image for inference, converting TIF files if needed."""
+        img_path_str = str(img_path)
+        
+        # Check if it's a TIF file that might need conversion
+        if img_path.suffix.lower() in ['.tif', '.tiff']:
+            try:
+                with Image.open(img_path) as img:
+                    # If it's not RGB, convert it in memory and save to temp file
+                    if img.mode != 'RGB':
+                        print(f"Converting TIF for inference: {img_path.name} (mode: {img.mode})")
+                        
+                        # Convert to RGB
+                        if img.mode == '1':  # 1-bit black and white
+                            rgb_img = img.convert('L').convert('RGB')
+                        elif img.mode == 'L':  # Grayscale
+                            rgb_img = img.convert('RGB')
+                        elif img.mode == 'RGBA':  # Has alpha channel
+                            # Create white background and paste image
+                            rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                            if len(img.split()) > 3:
+                                rgb_img.paste(img, mask=img.split()[3])
+                            else:
+                                rgb_img.paste(img)
+                        else:
+                            # Generic conversion
+                            rgb_img = img.convert('RGB')
+                        
+                        # Save to temporary file for inference
+                        temp_fd, temp_path = tempfile.mkstemp(suffix='.tif', prefix='inference_')
+                        os.close(temp_fd)  # Close the file descriptor, but keep the path
+                        
+                        # Save with efficient compression
+                        try:
+                            rgb_img.save(temp_path, 'TIFF', compression='tiff_adobe_deflate')
+                        except Exception:
+                            # Fallback compression
+                            rgb_img.save(temp_path, 'TIFF', compression='lzw')
+                        
+                        return temp_path
+                    else:
+                        # Already RGB, use original
+                        return img_path_str
+                        
+            except Exception as e:
+                print(f"Error checking TIF file {img_path}: {e}")
+                # If we can't process it, try with original
+                return img_path_str
+        
+        # Not a TIF file, use original
+        return img_path_str
+    
     def run(self):
         """Run inference on provided images."""
         try:
@@ -81,8 +136,16 @@ class InferenceThread(QThread):
                 if not self._is_running:
                     break
                     
-                # Run inference (model already on GPU/CPU from ModelCache)
-                results = self.model(str(img_path), conf=0.01)  # Low conf to get all detections
+                # Handle TIF conversion for inference if needed
+                inference_path = self._prepare_image_for_inference(img_path)
+                
+                try:
+                    # Run inference (model already on GPU/CPU from ModelCache)
+                    results = self.model(inference_path, conf=0.01)  # Low conf to get all detections
+                finally:
+                    # Clean up temporary file if created
+                    if inference_path != str(img_path) and os.path.exists(inference_path):
+                        os.unlink(inference_path)
                 
                 # Extract detections
                 detections = []
