@@ -8,6 +8,7 @@ from enum import Enum
 import json
 
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, pyqtSlot
+from ..core.constants import IMAGE_EXTENSIONS
 import numpy as np
 
 from ..core import ModelCache
@@ -235,11 +236,10 @@ class AutoAnnotationManager(QObject):
                       medium_threshold: float = 0.4) -> AutoAnnotationSession:
         """Create a new auto-annotation session."""
         # Find images in folder
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
         image_paths = []
         
         folder = Path(folder_path)
-        for ext in image_extensions:
+        for ext in IMAGE_EXTENSIONS:
             image_paths.extend(folder.glob(f'*{ext}'))
             image_paths.extend(folder.glob(f'*{ext.upper()}'))
         

@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 from ..widgets.annotation_canvas import Annotation
 from ..utils.auto_annotation_manager import AutoAnnotationManager, AnnotationProposal
 from .auto_annotation_data_classes import ConfidenceCategory, SessionStats
+from ..core.constants import IMAGE_EXTENSIONS
 
 
 class ImageProcessor(QObject):
@@ -166,9 +167,8 @@ class ImageProcessor(QObject):
         
     def _get_image_paths(self, folder: Path, include_annotated: bool) -> List[Path]:
         """Get image paths from folder, optionally filtering annotated ones."""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
         all_image_paths_set = set()  # Use set to avoid duplicates
-        for ext in image_extensions:
+        for ext in IMAGE_EXTENSIONS:
             all_image_paths_set.update(folder.glob(f'*{ext}'))
             all_image_paths_set.update(folder.glob(f'*{ext.upper()}'))
         all_image_paths = list(all_image_paths_set)

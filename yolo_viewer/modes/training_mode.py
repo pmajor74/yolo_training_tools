@@ -21,10 +21,12 @@ from PyQt6.QtGui import QFont, QTextCursor
 
 from .base_mode import BaseMode
 from ..core import ModelCache, SettingsManager, DatasetManager
+from ..core.constants import IMAGE_EXTENSIONS
 from ..utils.training_process import TrainingProcess
 from ..widgets.augmentation_settings import AugmentationSettings
 from ..widgets.training_charts import TrainingCharts
 from ..widgets.training_results import TrainingResults
+from ..utils.tif_converter import TifFormatChecker
 
 
 class TrainingMode(BaseMode):
@@ -472,9 +474,8 @@ class TrainingMode(BaseMode):
                             img_dir = full_train_path
                         
                         # Count only image files (not .txt annotation files)
-                        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
                         for file in img_dir.iterdir():
-                            if file.is_file() and file.suffix.lower() in image_extensions:
+                            if file.is_file() and file.suffix.lower() in IMAGE_EXTENSIONS:
                                 self._num_train_images += 1
                 
                 # Update label with count
@@ -491,10 +492,50 @@ class TrainingMode(BaseMode):
     @pyqtSlot()
     def _start_training(self):
         """Start the training process."""
+        print("=== TRAINING START DEBUG ===")
+        print(f"_start_training() called, dataset_path: {self._dataset_path}")
+        
         # Validate inputs
         if not self._dataset_path or not self._dataset_path.exists():
+            print(f"Dataset validation failed: path={self._dataset_path}, exists={self._dataset_path.exists() if self._dataset_path else 'None'}")
             QMessageBox.warning(self, "Warning", "Please select a valid dataset")
             return
+        
+        print(f"Dataset validation passed: {self._dataset_path}")
+        
+        # Get the actual dataset directory from the YAML file
+        actual_dataset_path = self._get_dataset_directory_from_yaml()
+        print(f"Actual dataset directory: {actual_dataset_path}")
+        
+        # Check and convert TIF files if needed
+        tif_check_msg = f"Checking TIF file formats in dataset: {actual_dataset_path}"
+        self._log(tif_check_msg)
+        print(f"LOG: {tif_check_msg}")
+        
+        try:
+            print(f"Calling TifFormatChecker.check_and_convert_if_needed...")
+            conversion_result = TifFormatChecker.check_and_convert_if_needed(actual_dataset_path, self, self._log)
+            print(f"TIF check result: {conversion_result}")
+            
+            if not conversion_result:
+                # User cancelled conversion or conversion failed
+                cancel_msg = "Training cancelled: TIF file conversion declined or failed"
+                self._log(cancel_msg)
+                print(f"LOG: {cancel_msg}")
+                QMessageBox.information(self, "Training Cancelled", 
+                                      "Training cancelled. TIF files must be in RGB format for YOLO training.")
+                return
+        except Exception as e:
+            error_msg = f"Error during TIF format check: {e}"
+            self._log(error_msg)
+            print(f"LOG: {error_msg}")
+            print(f"EXCEPTION DETAILS: {type(e).__name__}: {e}")
+            import traceback
+            print(f"TRACEBACK: {traceback.format_exc()}")
+            QMessageBox.warning(self, "Error", f"Error checking TIF files: {e}")
+            return
+        
+        print("TIF check completed successfully, continuing with training...")
         
         # Check if model is loaded for training
         model_cache = ModelCache()
@@ -672,6 +713,32 @@ class TrainingMode(BaseMode):
             # If torch is not available, default to cpu
             return "cpu"
     
+    def _get_dataset_directory_from_yaml(self) -> Path:
+        """Extract the actual dataset directory from the YAML file."""
+        try:
+            import yaml
+            with open(self._dataset_path, 'r') as f:
+                config = yaml.safe_load(f)
+                
+            # Get the path from the YAML config
+            dataset_root = config.get('path', '.')
+            
+            # If it's a relative path, make it relative to the YAML file location
+            if not Path(dataset_root).is_absolute():
+                yaml_dir = self._dataset_path.parent
+                actual_path = yaml_dir / dataset_root
+            else:
+                actual_path = Path(dataset_root)
+                
+            print(f"YAML config path: {dataset_root}")
+            print(f"Resolved dataset path: {actual_path}")
+            return actual_path.resolve()
+            
+        except Exception as e:
+            print(f"Error reading YAML config: {e}")
+            # Fall back to using the YAML file's directory
+            return self._dataset_path.parent
+
     def _prepare_training_config(self) -> Dict:
         """Prepare training configuration."""
         # Determine which model to use

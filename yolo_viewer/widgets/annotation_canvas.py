@@ -14,7 +14,7 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import (
     QPixmap, QPainter, QPen, QColor, QBrush, QCursor,
     QMouseEvent, QKeyEvent, QWheelEvent, QFont, QTransform,
-    QUndoCommand, QUndoStack
+    QUndoCommand, QUndoStack, QImage
 )
 
 from ..core.constants import ANNOTATION_COLORS, ANNOTATION_LINE_WIDTH, COLOR_MANAGER
@@ -349,8 +349,9 @@ class AnnotationCanvas(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
-        # Set viewport update mode for better performance
-        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.SmartViewportUpdate)
+        # Set viewport update mode - use FullViewportUpdate for better compatibility with TIF files
+        # This ensures proper rendering of overlays on all image formats
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
         
         # State
         self._pixmap_item: Optional[QGraphicsPixmapItem] = None
@@ -416,6 +417,14 @@ class AnnotationCanvas(QGraphicsView):
         """Load an image into the canvas."""
         # Clear previous
         self.clear_canvas()
+        
+        # Convert pixmap to ensure proper format for rendering
+        # This helps with TIF files that might have unusual bit depths or formats
+        if pixmap.depth() != 32:
+            # Convert to 32-bit ARGB for consistent rendering
+            image = pixmap.toImage()
+            image = image.convertToFormat(QImage.Format.Format_ARGB32)
+            pixmap = QPixmap.fromImage(image)
         
         # Add pixmap
         self._pixmap_item = self._scene.addPixmap(pixmap)
@@ -575,12 +584,17 @@ class AnnotationCanvas(QGraphicsView):
                 self._is_drawing = True
                 self._draw_start_pos = scene_pos
                 
-                # Create preview rectangle
+                # Create preview rectangle with better visibility
+                # Use a cyan color with thicker line for better contrast on all backgrounds
+                preview_pen = QPen(QColor(0, 255, 255), 2, Qt.PenStyle.DashLine)
+                preview_pen.setCosmetic(True)  # Keep consistent width regardless of zoom
                 self._preview_rect = self._scene.addRect(
                     QRectF(scene_pos, scene_pos),
-                    QPen(QColor(255, 255, 255), 1, Qt.PenStyle.DashLine),
+                    preview_pen,
                     QBrush(Qt.BrushStyle.NoBrush)
                 )
+                # Ensure it's on top
+                self._preview_rect.setZValue(1000)
             else:
                 super().mousePressEvent(event)
         else:
@@ -594,6 +608,8 @@ class AnnotationCanvas(QGraphicsView):
             # Update preview rectangle
             rect = QRectF(self._draw_start_pos, scene_pos).normalized()
             self._preview_rect.setRect(rect)
+            # Force scene update for better rendering with TIF files
+            self._scene.update(rect.adjusted(-5, -5, 5, 5))
         
         super().mouseMoveEvent(event)
     

@@ -23,6 +23,7 @@ from .auto_annotation_dataset_handler import DatasetHandler
 from .auto_annotation_training_handler import TrainingHandler
 from .auto_annotation_ui_builder import UIBuilder
 from .auto_annotation_image_processor import ImageProcessor
+from ..utils.tif_converter import TifFormatChecker
 
 
 class AutoAnnotationMode(BaseMode):
@@ -397,6 +398,13 @@ class AutoAnnotationMode(BaseMode):
     def _start_processing(self):
         """Start auto-annotation processing."""
         if not self._current_folder:
+            return
+        
+        # Check and convert TIF files if needed
+        if not TifFormatChecker.check_and_convert_if_needed(self._current_folder, self):
+            # User cancelled conversion or conversion failed
+            QMessageBox.information(self, "Processing Cancelled", 
+                                  "Auto-annotation cancelled. TIF files must be in RGB format for YOLO processing.")
             return
             
         # Reset filters and categories for new session
@@ -1967,9 +1975,8 @@ class AutoAnnotationMode(BaseMode):
             self._folder_label.setToolTip(str(self._current_folder))
             
             # Load images from the folder into gallery
-            image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
             all_image_paths_set = set()
-            for ext in image_extensions:
+            for ext in IMAGE_EXTENSIONS:
                 all_image_paths_set.update(self._current_folder.glob(f'*{ext}'))
                 all_image_paths_set.update(self._current_folder.glob(f'*{ext.upper()}'))
             

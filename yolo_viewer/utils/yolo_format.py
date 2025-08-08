@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional
 import yaml
+from ..core.constants import IMAGE_EXTENSIONS
 
 
 def parse_yolo_annotation(file_path: Path) -> List[Tuple[int, float, float, float, float]]:
@@ -111,8 +112,9 @@ def get_image_paths_from_dataset(data_yaml_path: Path, split: str = 'train') -> 
             if split_path.is_dir():
                 # Get all image files
                 image_files = []
-                for ext in ['*.jpg', '*.JPG', '*.jpeg', '*.JPEG', '*.png', '*.PNG', '*.bmp', '*.BMP']:
-                    image_files.extend(split_path.glob(ext))
+                for ext in IMAGE_EXTENSIONS:
+                    image_files.extend(split_path.glob(f'*{ext}'))
+                    image_files.extend(split_path.glob(f'*{ext.upper()}'))
                 # Remove duplicates and sort
                 unique_files = sorted(set(image_files))
                 return unique_files

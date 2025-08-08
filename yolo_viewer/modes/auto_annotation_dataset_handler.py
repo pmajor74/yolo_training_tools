@@ -12,6 +12,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from ..utils.yolo_format import parse_yolo_annotation
 from .auto_annotation_data_classes import WorkflowState
+from ..core.constants import IMAGE_EXTENSIONS
 
 
 class DatasetHandler(QObject):
@@ -254,10 +255,9 @@ class DatasetHandler(QObject):
     
     def _get_annotated_images(self, folder: Path) -> List[Path]:
         """Get all annotated images from folder."""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
         annotated_images = []
         
-        for ext in image_extensions:
+        for ext in IMAGE_EXTENSIONS:
             # Check lowercase extensions
             for img_path in folder.glob(f'*{ext}'):
                 ann_path = img_path.with_suffix('.txt')
