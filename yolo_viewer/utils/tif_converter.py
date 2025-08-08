@@ -153,8 +153,13 @@ YOLO training requires RGB images with 3 channels, but some of your TIF files ar
                             # Generic conversion
                             rgb_img = img.convert('RGB')
                         
-                        # Save converted image with LZW compression
-                        rgb_img.save(tif_path, 'TIFF', compression='lzw')
+                        # Save converted image with ZIP compression (best balance of size/quality)
+                        # ZIP/Deflate compression is lossless and much more efficient than LZW for RGB images
+                        try:
+                            rgb_img.save(tif_path, 'TIFF', compression='tiff_adobe_deflate')
+                        except Exception:
+                            # Fallback to LZW if ZIP compression fails
+                            rgb_img.save(tif_path, 'TIFF', compression='lzw')
                         success_count += 1
                     else:
                         success_count += 1  # Already RGB
