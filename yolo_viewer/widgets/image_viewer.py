@@ -269,20 +269,32 @@ class ImageViewer(QGraphicsView):
     
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming."""
-        # Always zoom with mouse wheel
+        # Get zoom direction
         delta = event.angleDelta().y()
-        scale_factor = 1.1 if delta > 0 else 0.9
+        if delta == 0:
+            return
         
-        # Get the position to zoom towards
-        old_pos = self.mapToScene(event.position().toPoint())
+        # Calculate zoom factor
+        zoom_factor = 1.1 if delta > 0 else 1.0 / 1.1
         
-        # Scale
-        self.scale_view(scale_factor)
-        new_pos = self.mapToScene(event.position().toPoint())
+        # Check zoom limits before applying
+        new_zoom = self._zoom_factor * zoom_factor
+        if not (self._min_zoom <= new_zoom <= self._max_zoom):
+            return  # Don't zoom if it would exceed limits
         
-        # Adjust position to zoom towards cursor
-        delta_pos = new_pos - old_pos
-        self.translate(delta_pos.x(), delta_pos.y())
+        # Save current anchor setting
+        old_anchor = self.transformationAnchor()
+        
+        # Set anchor to mouse cursor
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        
+        # Apply zoom and update zoom factor
+        self.scale(zoom_factor, zoom_factor)
+        self._zoom_factor = new_zoom
+        self.zoomChanged.emit(self._zoom_factor)
+        
+        # Restore original anchor setting
+        self.setTransformationAnchor(old_anchor)
     
     def mousePressEvent(self, event: QMouseEvent):
         """Handle mouse press for panning."""

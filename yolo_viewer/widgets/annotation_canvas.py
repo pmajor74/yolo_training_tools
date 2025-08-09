@@ -716,20 +716,33 @@ class AnnotationCanvas(QGraphicsView):
     
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming."""
-        # Always zoom with mouse wheel
+        # Get zoom direction
         delta = event.angleDelta().y()
-        scale_factor = 1.1 if delta > 0 else 0.9
+        if delta == 0:
+            return
         
-        # Get the position to zoom towards
-        old_pos = self.mapToScene(event.position().toPoint())
+        # Calculate zoom factor
+        zoom_factor = 1.1 if delta > 0 else 1.0 / 1.1
         
-        # Scale view
-        self.scale(scale_factor, scale_factor)
+        # Get current scale and check limits
+        current_scale = self.transform().m11()
+        new_scale = current_scale * zoom_factor
         
-        # Adjust position to zoom towards cursor
-        new_pos = self.mapToScene(event.position().toPoint())
-        delta_pos = new_pos - old_pos
-        self.translate(delta_pos.x(), delta_pos.y())
+        # Apply reasonable zoom limits
+        if new_scale < 0.1 or new_scale > 10.0:
+            return
+        
+        # Save current anchor setting
+        old_anchor = self.transformationAnchor()
+        
+        # Set anchor to mouse cursor
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        
+        # Apply zoom
+        self.scale(zoom_factor, zoom_factor)
+        
+        # Restore original anchor setting
+        self.setTransformationAnchor(old_anchor)
     
     def keyPressEvent(self, event: QKeyEvent):
         """Handle keyboard shortcuts."""
