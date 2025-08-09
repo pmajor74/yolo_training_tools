@@ -519,9 +519,15 @@ class FolderBrowserMode(BaseMode):
         layout.addLayout(header_layout)
         
         # Drawing hint (for edit mode)
-        self._hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class | 🔍 Ctrl+scroll to zoom")
+        self._hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class | 🖱️ Ctrl+click or Middle mouse to pan | 🔍 Scroll to zoom")
         self._hint_label.setStyleSheet("color: #888888; font-size: 12px;")
         layout.addWidget(self._hint_label)
+        
+        # Viewer hint (for inference mode)
+        self._viewer_hint_label = QLabel("🖱️ Ctrl+click or Middle mouse to pan | 🔍 Scroll to zoom | ➕ Plus/Minus keys to zoom | 0 Fit to window | 1 Actual size")
+        self._viewer_hint_label.setStyleSheet("color: #888888; font-size: 12px;")
+        self._viewer_hint_label.setVisible(False)  # Hidden by default, shown in inference mode
+        layout.addWidget(self._viewer_hint_label)
         
         # Stacked widget to switch between canvas and viewer
         from PyQt6.QtWidgets import QStackedWidget
@@ -1566,6 +1572,7 @@ class FolderBrowserMode(BaseMode):
             self._class_combo.setVisible(False)
             self._class_label.setVisible(False)
             self._hint_label.setVisible(False)
+            self._viewer_hint_label.setVisible(True)  # Show viewer hint
             
             # Display current image with detections if any
             if self._current_image_path:
@@ -1578,6 +1585,7 @@ class FolderBrowserMode(BaseMode):
             self._class_combo.setVisible(True)
             self._class_label.setVisible(True)
             self._hint_label.setVisible(True)
+            self._viewer_hint_label.setVisible(False)  # Hide viewer hint
             
             # Reload current image in canvas if needed
             if self._current_image_path:

@@ -239,24 +239,24 @@ class ImageViewer(QGraphicsView):
                     text_rect = temp_text.boundingRect()
                     self._scene.removeItem(temp_text)
                     
-                    # Position label inside the box if it's large enough, otherwise above
+                    # Position label at top-right corner to avoid covering important corners
                     bg_width = text_rect.width() + 8
                     bg_height = text_rect.height() + 4
                     min_box_height = bg_height * 2
                     
                     if h > min_box_height:
-                        # Box is large enough - place label inside at top
-                        text_bg = self._scene.addRect(x + 2, y + 2, bg_width, bg_height, 
+                        # Box is large enough - place label inside at top-right
+                        text_bg = self._scene.addRect(x + w - bg_width - 2, y + 2, bg_width, bg_height, 
                                                      QPen(Qt.PenStyle.NoPen), 
                                                      QBrush(color))
-                        text_pos_x = x + 5
+                        text_pos_x = x + w - bg_width + 1
                         text_pos_y = y + 2
                     else:
-                        # Box is too small - place label above
-                        text_bg = self._scene.addRect(x, y - bg_height, bg_width, bg_height, 
+                        # Box is too small - place label above at right side
+                        text_bg = self._scene.addRect(x + w - bg_width, y - bg_height, bg_width, bg_height, 
                                                      QPen(Qt.PenStyle.NoPen), 
                                                      QBrush(color))
-                        text_pos_x = x + 3
+                        text_pos_x = x + w - bg_width + 3
                         text_pos_y = y - bg_height
                     
                     # Draw text with better contrast
@@ -287,9 +287,17 @@ class ImageViewer(QGraphicsView):
     def mousePressEvent(self, event: QMouseEvent):
         """Handle mouse press for panning."""
         if event.button() == Qt.MouseButton.LeftButton and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            # Start panning
+            # Start panning with Ctrl+Left click
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
             # Create a fake event without Ctrl to pass to parent
+            fake_event = QMouseEvent(event.type(), event.position(), event.globalPosition(),
+                                   Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
+                                   Qt.KeyboardModifier.NoModifier)
+            super().mousePressEvent(fake_event)
+        elif event.button() == Qt.MouseButton.MiddleButton:
+            # Start panning with middle mouse button
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            # Create a fake left-click event for panning
             fake_event = QMouseEvent(event.type(), event.position(), event.globalPosition(),
                                    Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
                                    Qt.KeyboardModifier.NoModifier)

@@ -189,7 +189,7 @@ class DatasetEditorMode(BaseMode):
         canvas_info_layout.addWidget(self.show_names_checkbox)
         
         # Drawing tools hint
-        hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class")
+        hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class | 🖱️ Ctrl+click or Middle mouse to pan | 🔍 Scroll to zoom")
         hint_label.setStyleSheet("color: #888888; font-size: 12px;")
         canvas_info_layout.addWidget(hint_label)
         

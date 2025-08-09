@@ -226,23 +226,36 @@ class AnnotationItem(QGraphicsRectItem):
         metrics = painter.fontMetrics()
         text_rect = metrics.boundingRect(text)
         
-        # Position label inside the box if it's large enough, otherwise above
-        min_box_height = text_rect.height() + 8
-        if rect.height() > min_box_height * 2:
-            # Box is large enough - place label inside at top
-            bg_rect = QRectF(rect.left() + 2, rect.top() + 2,
-                            text_rect.width() + 8, text_rect.height() + 4)
+        # Position label at top-right corner to avoid covering important corners
+        # This leaves the top-left corner visible for validation
+        label_width = text_rect.width() + 8
+        label_height = text_rect.height() + 4
+        min_box_height = label_height * 2
+        
+        if rect.height() > min_box_height:
+            # Box is large enough - place label inside at top-right
+            bg_rect = QRectF(rect.right() - label_width - 2, rect.top() + 2,
+                            label_width, label_height)
         else:
-            # Box is too small - place label above
-            bg_rect = QRectF(rect.left(), rect.top() - text_rect.height() - 4,
-                            text_rect.width() + 8, text_rect.height() + 4)
+            # Box is too small - place label above at right side
+            bg_rect = QRectF(rect.right() - label_width, rect.top() - label_height - 2,
+                            label_width, label_height)
         
         # Use COLOR_MANAGER for background color
         bg_color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
+        
+        # Make label semi-transparent if we're resizing or moving
+        if self._is_modifying or self._resize_handle != HandlePosition.NONE:
+            bg_color.setAlpha(38)  # 15% opacity (255 * 0.15 = 38)
+        
         painter.fillRect(bg_rect, bg_color)
         
         # Use contrasting text color for better readability
         text_color = QColor(*COLOR_MANAGER.get_text_color(self.annotation.class_id))
+        
+        # Also make text semi-transparent when modifying
+        if self._is_modifying or self._resize_handle != HandlePosition.NONE:
+            text_color.setAlpha(38)  # 15% opacity
         
         # Draw text with contrasting color
         painter.setPen(QPen(text_color))
@@ -617,6 +630,17 @@ class AnnotationCanvas(QGraphicsView):
             # Start panning
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
             # Create a fake event without Ctrl to pass to parent
+            fake_event = QMouseEvent(event.type(), event.position(), event.globalPosition(),
+                                   Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
+                                   Qt.KeyboardModifier.NoModifier)
+            super().mousePressEvent(fake_event)
+            return
+        
+        # Check for Middle Mouse Button for panning
+        if event.button() == Qt.MouseButton.MiddleButton:
+            # Start panning
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            # Create a fake left-click event for panning
             fake_event = QMouseEvent(event.type(), event.position(), event.globalPosition(),
                                    Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
                                    Qt.KeyboardModifier.NoModifier)
