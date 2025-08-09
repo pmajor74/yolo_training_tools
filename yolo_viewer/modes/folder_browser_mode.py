@@ -509,6 +509,13 @@ class FolderBrowserMode(BaseMode):
         self._annotation_count_label = QLabel("Annotations: 0")
         header_layout.addWidget(self._annotation_count_label)
         
+        # Show class names checkbox
+        self._show_names_checkbox = QCheckBox("Show Names")
+        self._show_names_checkbox.setChecked(True)
+        self._show_names_checkbox.toggled.connect(self._on_show_names_toggled)
+        self._show_names_checkbox.setToolTip("Toggle between showing class names and IDs")
+        header_layout.addWidget(self._show_names_checkbox)
+        
         layout.addLayout(header_layout)
         
         # Drawing hint (for edit mode)
@@ -837,6 +844,11 @@ class FolderBrowserMode(BaseMode):
             class_id = self._class_combo.itemData(index)
             if class_id is not None:
                 self._canvas.set_current_class(class_id)
+    
+    def _on_show_names_toggled(self, checked: bool):
+        """Toggle between showing class names and IDs."""
+        self._canvas.set_show_class_names(checked)
+        self._viewer.set_show_class_names(checked) if hasattr(self._viewer, 'set_show_class_names') else None
     
     @pyqtSlot(list)
     def _on_annotation_selection_changed(self, selected_annotations: List[Annotation]):

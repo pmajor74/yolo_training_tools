@@ -1082,6 +1082,10 @@ class AutoAnnotationMode(BaseMode):
         # Stop any ongoing processing
         if self._is_processing:
             self._stop_processing()
+        
+        # Clean up UI builder event filters
+        if hasattr(self, '_ui_builder') and self._ui_builder:
+            self._ui_builder.cleanup()
             
         return super()._on_deactivate()
         

@@ -90,12 +90,11 @@ class AnnotationItem(QGraphicsRectItem):
         color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
         pen_style = COLOR_MANAGER.get_pen_style(self.annotation.class_id)
         
-        if self.isSelected():
-            pen = QPen(color, ANNOTATION_LINE_WIDTH + 1)
-            pen.setStyle(pen_style)
-        else:
-            pen = QPen(color, ANNOTATION_LINE_WIDTH)
-            pen.setStyle(pen_style)
+        # Scale line width based on selection for better visibility on high-res images
+        base_width = 3 if self.isSelected() else 2
+        pen = QPen(color, base_width)
+        pen.setStyle(pen_style)
+        pen.setCosmetic(True)  # Keep consistent width regardless of zoom
         
         self.setPen(pen)
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -174,22 +173,43 @@ class AnnotationItem(QGraphicsRectItem):
         """Draw class label."""
         painter.save()
         
-        # Prepare text
-        class_name = None
-        if self.canvas and hasattr(self.canvas, '_class_names'):
-            class_name = self.canvas._class_names.get(self.annotation.class_id)
+        # Check if we should show class names or IDs
+        show_names = True
+        if self.canvas and hasattr(self.canvas, '_show_class_names'):
+            show_names = self.canvas._show_class_names
         
-        if class_name:
-            text = f"{class_name} ({self.annotation.class_id})"
+        # Prepare text based on toggle
+        if show_names:
+            class_name = None
+            if self.canvas and hasattr(self.canvas, '_class_names'):
+                class_name = self.canvas._class_names.get(self.annotation.class_id)
+            
+            if class_name:
+                text = class_name
+            else:
+                text = f"C{self.annotation.class_id}"
         else:
-            text = f"Class {self.annotation.class_id}"
+            text = f"C{self.annotation.class_id}"
             
         if self.annotation.confidence:
-            text += f" ({self.annotation.confidence:.2f})"
+            text += f" {self.annotation.confidence:.0%}"
         
         # Draw background
         rect = self.rect()
-        font = QFont("Arial", 10)
+        
+        # Dynamic font size based on view scale for better readability
+        view = self.scene().views()[0] if self.scene() and self.scene().views() else None
+        if view:
+            # Get the current view transform scale
+            transform = view.transform()
+            scale = transform.m11()  # horizontal scale factor
+            # Adjust font size based on zoom level
+            base_size = 12
+            font_size = max(8, min(24, int(base_size / scale)))
+        else:
+            font_size = 12
+            
+        font = QFont("Arial", font_size, QFont.Weight.Bold)
         painter.setFont(font)
         metrics = painter.fontMetrics()
         text_rect = metrics.boundingRect(text)
@@ -360,6 +380,7 @@ class AnnotationCanvas(QGraphicsView):
         self._annotation_items: Dict[str, AnnotationItem] = {}
         self._is_read_only = False
         self._class_names: Dict[int, str] = {}  # Mapping of class_id to name
+        self._show_class_names = True  # Toggle for showing names vs IDs
         
         # Drawing state
         self._is_drawing = False
@@ -410,6 +431,16 @@ class AnnotationCanvas(QGraphicsView):
         # Update all existing annotation items to show new class names
         for item in self._annotation_items.values():
             # Force complete redraw of the item
+            item.prepareGeometryChange()
+            item.update(item.boundingRect())
+    
+    def set_show_class_names(self, show: bool):
+        """Toggle between showing class names and IDs."""
+        self._show_class_names = show
+        
+        # Update all existing annotation items to reflect the change
+        for item in self._annotation_items.values():
+            # Force complete redraw of the item including label
             item.prepareGeometryChange()
             item.update(item.boundingRect())
     
@@ -586,7 +617,7 @@ class AnnotationCanvas(QGraphicsView):
                 
                 # Create preview rectangle with better visibility
                 # Use a cyan color with thicker line for better contrast on all backgrounds
-                preview_pen = QPen(QColor(0, 255, 255), 2, Qt.PenStyle.DashLine)
+                preview_pen = QPen(QColor(0, 255, 255), 3, Qt.PenStyle.DashLine)
                 preview_pen.setCosmetic(True)  # Keep consistent width regardless of zoom
                 self._preview_rect = self._scene.addRect(
                     QRectF(scene_pos, scene_pos),

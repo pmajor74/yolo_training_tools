@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from PyQt6.QtWidgets import (
     QWidget, QSplitter, QVBoxLayout, QHBoxLayout, QComboBox,
     QLabel, QPushButton, QGroupBox, QSpinBox, QMessageBox,
-    QFileDialog
+    QFileDialog, QCheckBox
 )
 from PyQt6.QtCore import Qt, pyqtSlot, pyqtSignal, QRectF
 from PyQt6.QtGui import QPixmap
@@ -180,6 +180,13 @@ class DatasetEditorMode(BaseMode):
         canvas_info_layout.addWidget(self.annotation_count_label)
         
         canvas_info_layout.addStretch()
+        
+        # Show class names checkbox
+        self.show_names_checkbox = QCheckBox("Show Class Names")
+        self.show_names_checkbox.setChecked(True)
+        self.show_names_checkbox.toggled.connect(self._on_show_names_toggled)
+        self.show_names_checkbox.setToolTip("Toggle between showing class names and IDs")
+        canvas_info_layout.addWidget(self.show_names_checkbox)
         
         # Drawing tools hint
         hint_label = QLabel("✏️ Left-click drag to draw | 🗑️ DEL to delete | 🔢 0-9 keys to change class")
@@ -607,7 +614,11 @@ class DatasetEditorMode(BaseMode):
             # This will update all selected annotations and emit annotationModified signals
             self.annotation_canvas.set_current_class(class_id)
     
-    @pyqtSlot(list)
+    @pyqtSlot(bool)
+    def _on_show_names_toggled(self, checked: bool):
+        """Toggle between showing class names and IDs."""
+        self.annotation_canvas.set_show_class_names(checked)
+    
     def _on_annotation_selection_changed(self, selected_annotations: List[Annotation]):
         """Handle annotation selection changes - update class dropdown."""
         if selected_annotations and len(selected_annotations) == 1:

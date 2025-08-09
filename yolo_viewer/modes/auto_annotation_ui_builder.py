@@ -916,14 +916,29 @@ class UIBuilder(QObject):
     
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         """Event filter to prevent combo box from closing when clicking checkboxes."""
-        if obj == self.category_list_widget.viewport():
-            if event.type() == QEvent.Type.MouseButtonRelease:
-                # Get the item at the click position
-                pos = event.pos()
-                item = self.category_list_widget.itemAt(pos)
-                if item:
-                    # Emit the click signal
-                    self.categoryFilterClicked.emit(item)
-                # Prevent the combo box from closing
-                return True
+        try:
+            # Check if the widget still exists before accessing it
+            if hasattr(self, 'category_list_widget') and self.category_list_widget:
+                if obj == self.category_list_widget.viewport():
+                    if event.type() == QEvent.Type.MouseButtonRelease:
+                        # Get the item at the click position
+                        pos = event.pos()
+                        item = self.category_list_widget.itemAt(pos)
+                        if item:
+                            # Emit the click signal
+                            self.categoryFilterClicked.emit(item)
+                        # Prevent the combo box from closing
+                        return True
+        except RuntimeError:
+            # Widget has been deleted, just return False
+            pass
         return False
+    
+    def cleanup(self):
+        """Clean up event filters and resources before deletion."""
+        try:
+            if hasattr(self, 'category_list_widget') and self.category_list_widget:
+                self.category_list_widget.viewport().removeEventFilter(self)
+        except RuntimeError:
+            # Widget already deleted, nothing to do
+            pass
