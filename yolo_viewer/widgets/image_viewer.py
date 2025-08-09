@@ -55,6 +55,14 @@ class ImageViewer(QGraphicsView):
     
     def load_image(self, pixmap: QPixmap):
         """Load an image into the viewer."""
+        # Save the current viewport transformation before clearing
+        saved_transform = None
+        saved_center = None
+        if not self._first_image_load and self._pixmap_item:
+            # Save current transform and viewport center
+            saved_transform = self.transform()
+            saved_center = self.mapToScene(self.viewport().rect().center())
+        
         # Clear previous
         self._scene.clear()
         
@@ -68,9 +76,10 @@ class ImageViewer(QGraphicsView):
             self._zoom_factor = self.transform().m11()
             self.zoomChanged.emit(self._zoom_factor)
             self._first_image_load = False
-        else:
-            # Just center on the new image without changing zoom
-            self.centerOn(self._pixmap_item)
+        elif saved_transform and saved_center:
+            # Restore the saved transformation and center point
+            self.setTransform(saved_transform)
+            self.centerOn(saved_center)
         
         # Draw annotations if any
         if self._annotations:
