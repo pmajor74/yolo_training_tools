@@ -15,6 +15,7 @@ from PyQt6.QtGui import QPixmap
 from .base_mode import BaseMode
 from ..widgets import EnhancedThumbnailGallery, AnnotationCanvas
 from ..widgets.annotation_canvas import Annotation
+from ..widgets.sort_filter_widget import SortFilterWidget, SortOption
 from ..utils.yolo_format import (
     parse_yolo_annotation, save_yolo_annotation, load_data_yaml,
     get_image_paths_from_dataset, get_annotation_path, denormalize_bbox
@@ -146,6 +147,11 @@ class DatasetEditorMode(BaseMode):
         gallery_controls.addStretch()
         
         gallery_layout.addLayout(gallery_controls)
+        
+        # Add sort/filter widget (collapsed by default)
+        self.sort_filter_widget = SortFilterWidget(self, enable_detection_filters=False, start_collapsed=True)
+        self.sort_filter_widget.sortingChanged.connect(self._on_sorting_changed)
+        gallery_layout.addWidget(self.sort_filter_widget)
         
         # Thumbnail gallery - takes up all available space
         self.thumbnail_gallery = EnhancedThumbnailGallery()
@@ -618,6 +624,44 @@ class DatasetEditorMode(BaseMode):
     def _on_show_names_toggled(self, checked: bool):
         """Toggle between showing class names and IDs."""
         self.annotation_canvas.set_show_class_names(checked)
+    
+    def _on_sorting_changed(self):
+        """Handle sorting/filtering changes."""
+        if not self._dataset_info:
+            return
+        
+        # Remember current selection
+        current_selection = self.thumbnail_gallery.get_current_selected_path()
+        
+        # Get all image paths and annotations
+        all_paths = self.thumbnail_gallery.get_all_image_paths()
+        annotations_dict = self.thumbnail_gallery.get_annotations_dict()
+        
+        # Apply sorting and filtering
+        sorted_paths = self.sort_filter_widget.apply_sort_and_filter(
+            all_paths, annotations_dict
+        )
+        
+        # Update gallery with sorted/filtered paths
+        self.thumbnail_gallery.apply_sort_and_filter(sorted_paths)
+        
+        # Handle selection after sorting/filtering
+        self._handle_selection_after_change(current_selection)
+    
+    def _handle_selection_after_change(self, previous_selection: Optional[str]):
+        """Handle thumbnail selection after sorting/filtering changes.
+        
+        Args:
+            previous_selection: Path of previously selected image, or None
+        """
+        if previous_selection:
+            # Try to maintain current selection
+            if not self.thumbnail_gallery.select_and_scroll_to_path(previous_selection):
+                # Previous selection not in filtered results, select first
+                self.thumbnail_gallery.select_first_item()
+        else:
+            # No previous selection, select first item
+            self.thumbnail_gallery.select_first_item()
     
     def _on_annotation_selection_changed(self, selected_annotations: List[Annotation]):
         """Handle annotation selection changes - update class dropdown."""

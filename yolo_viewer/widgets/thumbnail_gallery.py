@@ -3,6 +3,7 @@
 from typing import List, Optional, Dict, Tuple, Set
 from pathlib import Path
 from dataclasses import dataclass
+from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QListView, QStyledItemDelegate, QSlider, QLabel,
@@ -39,12 +40,14 @@ class ThumbnailModel(QAbstractListModel):
     def __init__(self):
         super().__init__()
         self._items: List[ThumbnailData] = []
+        self._original_items: List[ThumbnailData] = []  # Store original order
         self._thumbnail_size = 150
     
     def set_items(self, items: List[ThumbnailData]):
         """Set all items."""
         self.beginResetModel()
         self._items = items
+        self._original_items = items.copy()  # Keep original order
         self.endResetModel()
     
     def add_items(self, items: List[ThumbnailData]):
@@ -55,6 +58,7 @@ class ThumbnailModel(QAbstractListModel):
         end_row = start_row + len(items) - 1
         self.beginInsertRows(QModelIndex(), start_row, end_row)
         self._items.extend(items)
+        self._original_items.extend(items)  # Keep original order
         self.endInsertRows()
     
     def set_thumbnail_size(self, size: int):
@@ -100,6 +104,10 @@ class ThumbnailModel(QAbstractListModel):
             self.beginRemoveRows(QModelIndex(), index, index)
             self._items.pop(index)
             self.endRemoveRows()
+        
+        # Also remove from original items
+        self._original_items = [item for item in self._original_items 
+                                if item.image_path not in paths_set]
     
     def rowCount(self, parent=QModelIndex()) -> int:
         return len(self._items)
@@ -118,6 +126,31 @@ class ThumbnailModel(QAbstractListModel):
             return QSize(self._thumbnail_size + 10, self._thumbnail_size + 30)
         
         return None
+    
+    def sort_and_filter_items(self, sorted_paths: List[str]):
+        """Reorder items based on sorted paths."""
+        if not sorted_paths:
+            return
+        
+        # Create a mapping of path to item
+        path_to_item = {item.image_path: item for item in self._original_items}
+        
+        # Build new sorted list
+        new_items = []
+        for path in sorted_paths:
+            if path in path_to_item:
+                new_items.append(path_to_item[path])
+        
+        # Update the model
+        self.beginResetModel()
+        self._items = new_items
+        self.endResetModel()
+    
+    def reset_to_original_order(self):
+        """Reset items to original order."""
+        self.beginResetModel()
+        self._items = self._original_items.copy()
+        self.endResetModel()
 
 
 class ThumbnailDelegate(QStyledItemDelegate):
@@ -297,11 +330,19 @@ class ThumbnailGallery(QWidget):
         
         # Cache for loaded images
         self._image_cache: Dict[str, QPixmap] = {}
+        
+        # Store original image paths and annotations for sorting
+        self._image_paths: List[str] = []
+        self._annotations_dict: Optional[Dict[str, List[Tuple]]] = None
     
     def load_images(self, image_paths: List[str], annotations_dict: Optional[Dict[str, List[Tuple]]] = None):
         """Load images with optional annotations."""
         # Clear any existing selection
         self.list_view.clearSelection()
+        
+        # Store for sorting/filtering
+        self._image_paths = image_paths.copy()
+        self._annotations_dict = annotations_dict
         
         items = []
         seen_paths = set()
@@ -603,6 +644,64 @@ class ThumbnailGallery(QWidget):
         else:
             # Let normal scrolling happen
             super().wheelEvent(event)
+    
+    def apply_sort_and_filter(self, sorted_paths: List[str]):
+        """Apply sorting/filtering by reordering items."""
+        self._model.sort_and_filter_items(sorted_paths)
+    
+    def reset_sort_and_filter(self):
+        """Reset to original order."""
+        self._model.reset_to_original_order()
+    
+    def get_all_image_paths(self) -> List[str]:
+        """Get all image paths in original order."""
+        return self._image_paths.copy()
+    
+    def get_annotations_dict(self) -> Optional[Dict[str, List[Tuple]]]:
+        """Get the annotations dictionary."""
+        return self._annotations_dict
+    
+    def get_current_selected_path(self) -> Optional[str]:
+        """Get the currently selected image path."""
+        selected_indexes = self.list_view.selectionModel().selectedIndexes()
+        if selected_indexes:
+            item = self._model.get_item(selected_indexes[0].row())
+            return item.image_path if item else None
+        return None
+    
+    def select_and_scroll_to_path(self, image_path: str) -> bool:
+        """Select and scroll to a specific image path.
+        
+        Returns:
+            bool: True if the image was found and selected, False otherwise
+        """
+        for i in range(self._model.rowCount()):
+            item = self._model.get_item(i)
+            if item and item.image_path == image_path:
+                # Select the item
+                index = self._model.index(i)
+                self.list_view.setCurrentIndex(index)
+                self.list_view.selectionModel().select(index, self.list_view.selectionModel().SelectionFlag.ClearAndSelect)
+                
+                # Scroll to make it visible
+                self.list_view.scrollTo(index, self.list_view.ScrollHint.EnsureVisible)
+                
+                # Emit selection signal
+                self.imageSelected.emit(image_path)
+                return True
+        return False
+    
+    def select_first_item(self) -> bool:
+        """Select the first item in the gallery.
+        
+        Returns:
+            bool: True if an item was selected, False if gallery is empty
+        """
+        if self._model.rowCount() > 0:
+            item = self._model.get_item(0)
+            if item:
+                return self.select_and_scroll_to_path(item.image_path)
+        return False
 
 
 # For backwards compatibility

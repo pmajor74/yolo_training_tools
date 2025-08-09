@@ -49,6 +49,27 @@ Patrick Major
   - Clear help text showing all available controls
   - Toggle between showing class names or compact IDs
 
+### Advanced Gallery Sorting & Filtering System
+- **Universal Sorting Options** (Available in all gallery modes):
+  - **Name**: Sort alphabetically by filename (A-Z or Z-A)
+  - **Date Modified**: Sort by file modification timestamp (oldest/newest first)
+  - **File Size**: Sort by image file size (smallest/largest first)
+  - **Default**: Reset to original loading order
+- **Auto-Annotation Advanced Filters**:
+  - **Detection Count**: Filter images with minimum number of detections (e.g., "Show only images with 5+ objects")
+  - **Class Count**: Filter images by number of unique classes detected (e.g., "Show only multi-class images")
+  - Real-time filtering combines with confidence categories for precise dataset curation
+- **Smart Clear Options**:
+  - Individual "Clear Sort" button to reset ordering
+  - "Clear Filters" button for detection-based filters
+  - Instant filtering updates as you adjust parameters
+
+This system dramatically improves workflow efficiency when working with large datasets, allowing you to:
+- Quickly find the largest/smallest images for training considerations
+- Locate recently modified annotations
+- Focus annotation efforts on images with specific detection characteristics
+- Organize complex datasets for quality review and dataset balancing
+
 ## Upcoming Features
 - N8N integration examples
 - Additional model format support
@@ -88,6 +109,8 @@ The application includes comprehensive device detection and optimization:
 - **Full TIF/TIFF Support** - Native support for TIF files with automatic RGB conversion for training
 - **Enhanced Annotation Visibility** - Smart scaling annotations that remain visible at all zoom levels
 - **Preserved View Navigation** - Maintain zoom and pan settings when browsing through datasets
+- **Advanced Sorting & Filtering** - Sort image galleries by filename, date, size, or detection metrics with ascending/descending options
+- **Smart Detection Filters** - Auto-annotation mode includes filters for minimum detections and class counts per image
 
 ## 📋 Table of Contents
 
@@ -347,6 +370,11 @@ The crown jewel for efficient dataset expansion - use existing models to annotat
   - Overlap analysis and size distribution
   - Export quality assessment reports
 - Category-based filtering and approval workflow
+- **Advanced Sorting & Filtering**:
+  - Sort by filename, date, size, detection count, or class count
+  - Filter by minimum detections per image (e.g., "5+ objects")
+  - Filter by minimum unique classes per image (e.g., "multi-class scenes")
+  - Combine with confidence categories for precise dataset curation
 - **Active Learning Pipeline** - Integrated training with iterative improvement
 - Support for already annotated images with conflict resolution
 

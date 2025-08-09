@@ -23,6 +23,7 @@ from ..core import ImageCache, ModelCache, DatasetManager
 from ..widgets.thumbnail_gallery import ThumbnailGallery
 from ..widgets.annotation_canvas import AnnotationCanvas, Annotation
 from ..widgets.image_viewer import ImageViewer
+from ..widgets.sort_filter_widget import SortFilterWidget, SortOption
 from ..utils.yolo_format import (
     parse_yolo_annotation, save_yolo_annotation, 
     get_annotation_path, denormalize_bbox, normalize_bbox
@@ -462,6 +463,11 @@ class FolderBrowserMode(BaseMode):
         selection_layout.addStretch()
         layout.addLayout(selection_layout)
         
+        # Add sort/filter widget (collapsed by default)
+        self._sort_filter_widget = SortFilterWidget(self, enable_detection_filters=False, start_collapsed=True)
+        self._sort_filter_widget.sortingChanged.connect(self._on_sorting_changed)
+        layout.addWidget(self._sort_filter_widget)
+        
         # Thumbnail gallery
         self._gallery = ThumbnailGallery()
         self._gallery.imageSelected.connect(self._on_image_selected)
@@ -689,6 +695,9 @@ class FolderBrowserMode(BaseMode):
             self._save_current_annotations()
             # Note: _save_current_annotations already updates progress and statistics
         
+        # Remember current selection
+        current_selection = self._gallery.get_current_selected_path()
+        
         self._current_filter = filter_type
         
         # Update button states
@@ -698,6 +707,35 @@ class FolderBrowserMode(BaseMode):
         
         # Apply filter
         self._apply_filter()
+        
+        # Handle selection after filtering
+        self._handle_selection_after_change(current_selection)
+    
+    def _on_sorting_changed(self):
+        """Handle sorting/filtering changes."""
+        # Remember current selection
+        current_selection = self._gallery.get_current_selected_path()
+        
+        # Apply sorting after filtering
+        self._apply_filter()
+        
+        # Handle selection after sorting/filtering
+        self._handle_selection_after_change(current_selection)
+    
+    def _handle_selection_after_change(self, previous_selection: Optional[str]):
+        """Handle thumbnail selection after sorting/filtering changes.
+        
+        Args:
+            previous_selection: Path of previously selected image, or None
+        """
+        if previous_selection:
+            # Try to maintain current selection
+            if not self._gallery.select_and_scroll_to_path(previous_selection):
+                # Previous selection not in filtered results, select first
+                self._gallery.select_first_item()
+        else:
+            # No previous selection, select first item
+            self._gallery.select_first_item()
     
     def _apply_filter(self):
         """Apply the current filter to the gallery."""
@@ -722,8 +760,14 @@ class FolderBrowserMode(BaseMode):
                     if annotations:
                         annotations_dict[str(img_path)] = annotations
         
+        # Apply sorting to filtered paths
+        filtered_paths_str = [str(p) for p in filtered_paths]
+        sorted_paths = self._sort_filter_widget.apply_sort_and_filter(
+            filtered_paths_str, annotations_dict
+        )
+        
         # Update gallery
-        self._gallery.load_images([str(p) for p in filtered_paths], annotations_dict)
+        self._gallery.load_images(sorted_paths, annotations_dict)
         
         # Update label
         total = len(self._all_image_paths)

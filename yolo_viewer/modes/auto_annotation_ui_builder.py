@@ -14,6 +14,7 @@ from ..widgets.thumbnail_gallery import ThumbnailGallery
 from ..widgets.annotation_canvas import AnnotationCanvas
 from ..widgets.augmentation_settings import InfoLabel, AugmentationSettings
 from ..widgets.training_charts import TrainingCharts
+from ..widgets.sort_filter_widget import SortFilterWidget, SortOption
 from .auto_annotation_data_classes import ConfidenceCategory
 
 
@@ -124,6 +125,7 @@ class UIBuilder(QObject):
         self.select_all_btn: Optional[QPushButton] = None
         self.select_none_btn: Optional[QPushButton] = None
         self.expand_gallery_btn: Optional[QPushButton] = None
+        self.sort_filter_widget: Optional[SortFilterWidget] = None
         self.category_filter_combo: Optional[QComboBox] = None
         self.category_list_widget: Optional[QListWidget] = None
         self.filter_review_btn: Optional[QPushButton] = None
@@ -801,9 +803,20 @@ class UIBuilder(QObject):
         # Create stacked widget for gallery and charts
         self.center_stack = QStackedWidget()
         
-        # Page 1: Thumbnail gallery
+        # Page 1: Thumbnail gallery with sorting/filtering
+        gallery_widget = QWidget()
+        gallery_widget_layout = QVBoxLayout(gallery_widget)
+        gallery_widget_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Add sort/filter widget (collapsed by default, but with detection filters)
+        self.sort_filter_widget = SortFilterWidget(gallery_widget, enable_detection_filters=True, start_collapsed=True)
+        gallery_widget_layout.addWidget(self.sort_filter_widget)
+        
+        # Add thumbnail gallery
         self.gallery = ThumbnailGallery()
-        self.center_stack.addWidget(self.gallery)
+        gallery_widget_layout.addWidget(self.gallery)
+        
+        self.center_stack.addWidget(gallery_widget)
         
         # Page 2: Training charts
         self.training_charts = TrainingCharts()

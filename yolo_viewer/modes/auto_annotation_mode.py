@@ -14,6 +14,7 @@ from PyQt6.QtGui import QCursor, QAction
 
 from .base_mode import BaseMode
 from ..core import ModelCache, ImageCache, DatasetManager
+from ..core.constants import IMAGE_EXTENSIONS
 from ..widgets.annotation_canvas import Annotation
 from ..utils.yolo_format import load_data_yaml
 
@@ -24,6 +25,7 @@ from .auto_annotation_training_handler import TrainingHandler
 from .auto_annotation_ui_builder import UIBuilder
 from .auto_annotation_image_processor import ImageProcessor
 from ..utils.tif_converter import TifFormatChecker
+from ..widgets.sort_filter_widget import SortOption
 
 
 class AutoAnnotationMode(BaseMode):
@@ -203,6 +205,9 @@ class AutoAnnotationMode(BaseMode):
         self._filter_rejected_btn = self._ui_builder.filter_rejected_btn
         self._filter_no_detections_btn = self._ui_builder.filter_no_detections_btn
         
+        # Sort/Filter widget
+        self._sort_filter_widget = self._ui_builder.sort_filter_widget
+        
         # Editor
         self._canvas = self._ui_builder.annotation_canvas
         self._annotation_count_label = self._ui_builder.annotation_count_label
@@ -238,6 +243,10 @@ class AutoAnnotationMode(BaseMode):
         self._ui_builder.categoryFilterChanged.connect(self._on_category_filter_changed)
         self._ui_builder.classChanged.connect(self._on_class_changed)
         self._ui_builder.expandGallery.connect(self._toggle_gallery_expansion)
+        
+        # Sort/Filter signals
+        self._sort_filter_widget.sortingChanged.connect(self._on_sorting_changed)
+        self._sort_filter_widget.filteringChanged.connect(self._on_sorting_changed)
         
         # Gallery signals
         self._gallery.imageSelected.connect(self._on_image_selected)
@@ -470,6 +479,32 @@ class AutoAnnotationMode(BaseMode):
         
         # Select and load the first image in the filtered view
         self._select_image_at_position(0)
+    
+    def _on_sorting_changed(self):
+        """Handle sorting/filtering changes."""
+        # Remember current selection
+        current_selection = self._gallery.get_current_selected_path()
+        
+        # Reload gallery with current filter and apply new sorting
+        self._reload_gallery_with_filter()
+        
+        # Handle selection after sorting/filtering
+        self._handle_selection_after_change(current_selection)
+    
+    def _handle_selection_after_change(self, previous_selection: Optional[str]):
+        """Handle thumbnail selection after sorting/filtering changes.
+        
+        Args:
+            previous_selection: Path of previously selected image, or None
+        """
+        if previous_selection:
+            # Try to maintain current selection
+            if not self._gallery.select_and_scroll_to_path(previous_selection):
+                # Previous selection not in filtered results, select first
+                self._gallery.select_first_item()
+        else:
+            # No previous selection, select first item
+            self._gallery.select_first_item()
         
     def _approve_selected(self):
         """Approve annotations for selected images."""
@@ -1216,22 +1251,77 @@ class AutoAnnotationMode(BaseMode):
             filtered_paths = self._image_processor.all_processed_images
             
         # Apply detected category filter
-        if self._selected_category_filters:
-            # Further filter by detected categories
+        # Exception: NO_DETECTIONS category should always show all images since they have no categories by definition
+        if self._current_filter != ConfidenceCategory.NO_DETECTIONS:
+            if self._selected_category_filters:
+                # Further filter by detected categories when categories are selected
+                final_paths = []
+                for path in filtered_paths:
+                    detected = self._detected_categories.get(path, set())
+                    # Check if image contains any of the selected categories
+                    if detected.intersection(self._selected_category_filters):
+                        final_paths.append(path)
+                filtered_paths = final_paths
+            else:
+                # No categories selected (and not viewing NO_DETECTIONS) = show no images
+                filtered_paths = []
+        
+        # Build annotations dict for sorting/filtering - always needed for detection filters
+        annotations_dict = {}
+        if self._image_processor.annotation_manager and self._image_processor.annotation_manager.current_session:
+            for image_path in filtered_paths:
+                # Get proposals for this image
+                proposals = self._image_processor.annotation_manager.current_session.proposals.get(image_path, [])
+                if proposals:
+                    # Convert proposals to thumbnail annotation format
+                    thumbnail_annotations = []
+                    for proposal in proposals:
+                        # Proposals store bbox in pixel coords, convert to normalized
+                        dimensions = self._image_processor.get_image_dimensions(image_path)
+                        if dimensions:
+                            img_width, img_height = dimensions
+                            x, y, w, h = proposal.bbox
+                            x_center = (x + w/2) / img_width
+                            y_center = (y + h/2) / img_height
+                            norm_w = w / img_width
+                            norm_h = h / img_height
+                            thumbnail_annotations.append((proposal.class_id, x_center, y_center, norm_w, norm_h))
+                    annotations_dict[image_path] = thumbnail_annotations
+        
+        # Apply detection filters if active - always check regardless of sort option
+        filter_settings = self._sort_filter_widget.get_filter_settings()
+        if filter_settings:
+            # Apply detection-based filtering
             final_paths = []
             for path in filtered_paths:
-                detected = self._detected_categories.get(path, set())
-                # Check if image contains any of the selected categories
-                if detected.intersection(self._selected_category_filters):
-                    final_paths.append(path)
+                annotations = annotations_dict.get(path, [])
+                
+                # Check minimum detections
+                if 'min_detections' in filter_settings:
+                    if len(annotations) < filter_settings['min_detections']:
+                        continue
+                
+                # Check minimum classes
+                if 'min_classes' in filter_settings:
+                    unique_classes = set(ann[0] for ann in annotations if len(ann) > 0)
+                    if len(unique_classes) < filter_settings['min_classes']:
+                        continue
+                
+                final_paths.append(path)
             filtered_paths = final_paths
+        
+        # Always apply sorting (includes handling of Default + Descending order)
+        sorted_data = self._sort_filter_widget.sort_image_data(
+            [(path, {}) for path in filtered_paths], annotations_dict
+        )
+        sorted_paths = [path for path, _ in sorted_data]
             
-        # Load filtered images to gallery
-        self._gallery.load_images(filtered_paths)
+        # Load filtered and sorted images to gallery  
+        self._gallery.load_images(sorted_paths, annotations_dict)
         
         # Update gallery label
         total = len(self._image_processor.all_processed_images)
-        showing = len(filtered_paths)
+        showing = len(sorted_paths)
         if showing < total:
             self._gallery_label.setText(f"Images (showing {showing} of {total})")
         else:
