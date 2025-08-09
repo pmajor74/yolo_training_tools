@@ -227,7 +227,6 @@ class AutoAnnotationMode(BaseMode):
         self._ui_builder.augmentationToggled.connect(self._on_augmentation_toggled)
         self._ui_builder.workflowToggled.connect(self._toggle_workflow)
         self._ui_builder.modelHistoryChanged.connect(self._load_historical_model)
-        self._ui_builder.datasetManage.connect(self._manage_dataset)
         self._ui_builder.splitPercentageChanged.connect(self._update_split_percentages)
         self._ui_builder.startTraining.connect(self._start_training)
         self._ui_builder.stopTraining.connect(self._stop_training)
@@ -313,18 +312,12 @@ class AutoAnnotationMode(BaseMode):
     def _load_class_names_from_model(self):
         """Load class names from the currently loaded model."""
         model_cache = ModelCache()
-        model = model_cache.get_model()
-        if model:
-            # Try to get class names from model
+        if model_cache.is_loaded():
             try:
-                # YOLO models store names in model.model.names
-                if hasattr(model, 'model') and hasattr(model.model, 'names'):
-                    self._dataset_class_names = model.model.names
-                    self.update_class_names(self._dataset_class_names)
-                elif hasattr(model, 'names'):
-                    # Fallback to direct names attribute
-                    self._dataset_class_names = model.names
-                    self.update_class_names(self._dataset_class_names)
+                class_names = model_cache.get_class_names()
+                if class_names:
+                    self._dataset_class_names = class_names
+                    self.update_class_names(class_names)
             except Exception as e:
                 print(f"Could not load class names from model: {e}")
                 
@@ -348,13 +341,6 @@ class AutoAnnotationMode(BaseMode):
         model_cache = ModelCache()
         if not model_cache.is_loaded():
             QMessageBox.warning(self, "No Model", "Please load a model first.")
-            return
-            
-        # Check if workflow is enabled but no dataset is loaded
-        if self._workflow_enabled and not self._dataset_yaml_path:
-            QMessageBox.warning(self, "Dataset Required", 
-                              "Automated workflow requires a dataset to be loaded.\n\n"
-                              "Please use 'Load Dataset' to load an existing dataset first.")
             return
             
         # Start processing
@@ -1738,15 +1724,6 @@ class AutoAnnotationMode(BaseMode):
         """Move a single image to rejected folder."""
         self._move_selected_to_rejected()  # Reuse existing logic
         
-    def _manage_dataset(self):
-        """Manage dataset - load existing or create new."""
-        yaml_path = self._dataset_handler.manage_dataset()
-        if yaml_path:
-            self._dataset_yaml_path = yaml_path
-            self._dataset_info_label.setText(f"Dataset: {yaml_path.name}\nPath: {yaml_path.parent}")
-            self._workflow_state.dataset_path = yaml_path.parent
-            self._update_ui_state()
-            
     def _on_dataset_loaded(self, yaml_path: Path, data: dict):
         """Handle dataset loaded."""
         self._dataset_yaml_path = yaml_path

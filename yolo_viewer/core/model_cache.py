@@ -116,3 +116,11 @@ class ModelCache(QObject):
     def get_device(self) -> Optional[str]:
         """Get the device the model is loaded on."""
         return self._device
+    
+    def get_class_names(self) -> Dict[int, str]:
+        """Get class names dictionary from the loaded model."""
+        if self._model_info:
+            names = self._model_info.get('classes', {})
+            # Convert to int keys if needed
+            return {int(k): str(v) for k, v in names.items()} if names else {}
+        return {}

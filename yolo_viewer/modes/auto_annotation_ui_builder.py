@@ -30,7 +30,6 @@ class UIBuilder(QObject):
     augmentationToggled = pyqtSignal(bool)
     workflowToggled = pyqtSignal(bool)
     modelHistoryChanged = pyqtSignal(int)
-    datasetManage = pyqtSignal()
     splitPercentageChanged = pyqtSignal()
     startTraining = pyqtSignal()
     stopTraining = pyqtSignal()
@@ -181,14 +180,6 @@ class UIBuilder(QObject):
         self.folder_label.setWordWrap(True)
         self.folder_label.setStyleSheet("color: #666;")
         controls_layout.addWidget(self.folder_label)
-        
-        controls_layout.addSpacing(10)
-        
-        # Dataset selection
-        self.dataset_btn = QPushButton("Load Dataset")
-        self.dataset_btn.setToolTip("Load existing data.yaml")
-        self.dataset_btn.clicked.connect(self.datasetManage.emit)
-        controls_layout.addWidget(self.dataset_btn)
         
         controls_layout.addSpacing(10)
         

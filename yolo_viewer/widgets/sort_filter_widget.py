@@ -56,7 +56,7 @@ class SortFilterWidget(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 0)
         
         self.toggle_btn = QToolButton()
-        self.toggle_btn.setText("▼ Sort & Filter Options")
+        self.toggle_btn.setText("▼ Sort and Filter Options")
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setChecked(not self._start_collapsed)
         self.toggle_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -178,9 +178,9 @@ class SortFilterWidget(QWidget):
         """Toggle the visibility of the content frame."""
         self.content_frame.setVisible(checked)
         if checked:
-            self.toggle_btn.setText("▼ Sort & Filter Options")
+            self.toggle_btn.setText("▼ Sort and Filter Options")
         else:
-            self.toggle_btn.setText("▶ Sort & Filter Options")
+            self.toggle_btn.setText("▶ Sort and Filter Options")
     
     def _on_sorting_changed(self):
         """Handle sorting change."""
