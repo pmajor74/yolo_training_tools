@@ -20,14 +20,40 @@ Patrick Major
 - Application includes CPU mode detection with performance warnings.
 
 ## Version Information
-- **Current Version**: v2.0.1
+- **Current Version**: v2.1.0
 - **Application Name**: Majorsoft YOLO Dataset Viewer
 - **Framework**: PyQt6 with comprehensive UI improvements
+- **Last Updated**: August 2025
+
+## Recent Updates (v2.1.0 - August 2025)
+
+### Image Format Support
+- **Full TIF/TIFF Support**: Complete support for TIF files throughout the application
+- **Automatic Conversion**: Non-RGB TIF files (1-bit, grayscale) automatically converted for training
+- **Smart Compression**: Optimized file sizes using ZIP/Deflate compression
+- **Non-destructive Processing**: Folder Browser converts TIF files in-memory without modifying originals
+
+### Enhanced Annotation Experience
+- **Improved Visibility**: 
+  - Thicker bounding boxes (4-5px) with cosmetic pen for consistent width at all zoom levels
+  - Dynamic font scaling for labels based on zoom level
+  - Labels positioned at top-right corner to avoid covering validation points
+  - Semi-transparent labels during resizing for precision editing
+- **Smart Zoom Controls**:
+  - Zoom-to-cursor: Scroll wheel zooms toward mouse position, not center
+  - Preserved view: Zoom and pan settings maintained when navigating images
+  - First image fits to view, subsequent images preserve your chosen view
+- **Enhanced Controls**:
+  - Middle mouse button panning support
+  - Ctrl+Click alternative for panning
+  - Clear help text showing all available controls
+  - Toggle between showing class names or compact IDs
 
 ## Upcoming Features
 - N8N integration examples
 - Additional model format support
 - Enhanced batch processing capabilities
+- Video frame extraction and annotation
 
 ## Contributions
 Just drop me a line at codingwithoutbugs@gmail.com and let me now how you're using this. 
@@ -59,6 +85,9 @@ The application includes comprehensive device detection and optimization:
 - **GPU/CPU Status Indicator** - Real-time display of compute device and performance warnings
 - **Quality Control System** - Advanced annotation quality assessment with 12+ metrics
 - **Options Dialog** - Configurable processing settings and worker thread management
+- **Full TIF/TIFF Support** - Native support for TIF files with automatic RGB conversion for training
+- **Enhanced Annotation Visibility** - Smart scaling annotations that remain visible at all zoom levels
+- **Preserved View Navigation** - Maintain zoom and pan settings when browsing through datasets
 
 ## 📋 Table of Contents
 
@@ -173,12 +202,16 @@ Create and edit bounding box annotations with a visual interface designed for ef
 
 **Key Features:**
 - Draw bounding boxes directly on images
-- Support for multiple classes
+- Support for multiple classes and all image formats (JPG, PNG, TIF/TIFF)
 - Undo/redo functionality (Ctrl+Z/Y)
 - Batch save operations
 - Thumbnail gallery for easy navigation
-- Zoom and pan controls
+- Advanced zoom and pan controls with zoom-to-cursor
 - Real-time annotation validation
+- Enhanced annotation visibility with dynamic scaling
+- Toggle between showing class names or IDs
+- Semi-transparent labels during box resizing for precision
+- Preserved zoom/pan when navigating between images
 
 **How to Use:**
 1. **Create New Dataset**: 
@@ -203,25 +236,30 @@ Create and edit bounding box annotations with a visual interface designed for ef
    - Individual saves happen automatically when switching images
 
 **Keyboard Shortcuts:**
-- `1`, `2`: Switch between classes
+- `1`, `2`, `3`...`9`: Switch between classes (also changes selected boxes to new class)
 - `Ctrl+Z`: Undo last action
 - `Ctrl+Y`: Redo action
 - `Delete`: Remove selected box
-- `Mouse Wheel`: Zoom in/out
-- `Middle Mouse + Drag`: Pan image
+- `Mouse Wheel`: Zoom in/out (zooms to cursor position)
+- `Ctrl+Click` or `Middle Mouse`: Pan image
+- `Ctrl+A`: Select all annotations
 
 ### Folder Browser Mode
 
 Browse and work with images in any folder without needing a formal dataset structure. Perfect for quick inference or ad-hoc annotation.
 
 **Key Features:**
-- Browse any folder containing images
+- Browse any folder containing images (supports JPG, PNG, TIF/TIFF)
 - Run inference on selected or all images
 - Create annotations on-the-fly
+- Toggle between Edit and Inference modes
 - Filter images by annotation status
 - Export annotations in YOLO format
 - Confidence threshold adjustment
 - Batch operations support
+- Class name/ID toggle for cleaner view
+- Preserved zoom/pan settings across images
+- TIF files automatically converted for inference without modifying originals
 
 **How to Use:**
 1. **Browse Images**:
@@ -422,12 +460,14 @@ dataset/
 ### Dataset Editor & Annotation Canvas
 | Key | Action |
 |-----|--------|
-| `1`, `2` | Switch to class 1 or 2 |
+| `0`-`9` | Switch to class or change selected boxes to class |
 | `Ctrl+Z` | Undo last action |
 | `Ctrl+Y` | Redo action |
 | `Delete` | Delete selected box |
-| `Mouse Wheel` | Zoom in/out |
-| `Middle Mouse + Drag` | Pan image |
+| `Mouse Wheel` | Zoom in/out (zooms to cursor position) |
+| `Ctrl+Click` | Pan image |
+| `Middle Mouse` | Pan image |
+| `Ctrl+A` | Select all annotations |
 | `Escape` | Deselect box |
 
 ### Training Mode
@@ -562,11 +602,14 @@ Retrain Improved Model
 - **Edge Cases**: Specifically include difficult examples (blur, occlusion, etc.)
 
 ### Annotation Best Practices
-- **Tight Boxes**: Minimize background, include only the barcode
-- **Complete Objects**: Don't cut off parts of codes
-- **Occlusion**: Annotate visible portions of partially hidden codes
-- **Small Objects**: Zoom in for precise annotation
+- **Tight Boxes**: Minimize background, include only the object
+- **Complete Objects**: Don't cut off parts of objects
+- **Occlusion**: Annotate visible portions of partially hidden objects
+- **Small Objects**: Zoom in for precise annotation (scroll wheel zooms to cursor)
 - **Regular Saves**: Save after every 10-20 annotations
+- **Efficient Navigation**: Set your preferred zoom/pan once, it stays consistent across images
+- **Class Management**: Use number keys 0-9 to quickly switch or reassign classes
+- **Visibility Options**: Toggle class names off when they overlap for cleaner view
 
 ### Training Optimization
 - **Start Small**: Use yolov8n for rapid experimentation
@@ -604,6 +647,18 @@ Retrain Improved Model
 - Increase dataset diversity
 - Adjust confidence thresholds
 - Add more training data
+
+**Annotations hard to see on high-resolution images**
+- Annotations now scale automatically with zoom level
+- Bounding boxes maintain consistent width regardless of zoom
+- Labels dynamically resize for readability
+- Use the class name toggle if labels overlap
+
+**TIF/TIFF files not working**
+- TIF support is fully integrated as of v2.1.0
+- Non-RGB TIF files are automatically converted
+- Check console for any conversion messages
+- Ensure sufficient disk space for converted files
 
 **Training crashes or stops**
 - Check available disk space
