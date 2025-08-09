@@ -61,8 +61,10 @@ class ImageViewer(QGraphicsView):
         self._pixmap_item = self._scene.addPixmap(pixmap)
         self._scene.setSceneRect(QRectF(pixmap.rect()))
         
-        # Don't auto-fit, just center the view like annotation canvas
-        self.centerOn(self._pixmap_item)
+        # Fit the entire image in view while maintaining aspect ratio
+        self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+        self._zoom_factor = self.transform().m11()
+        self.zoomChanged.emit(self._zoom_factor)
         
         # Draw annotations if any
         if self._annotations:
@@ -192,11 +194,12 @@ class ImageViewer(QGraphicsView):
                     # Use COLOR_MANAGER for colorblind-friendly colors
                     color = COLOR_MANAGER.get_qcolor(int(class_id))
                     pen_style = COLOR_MANAGER.get_pen_style(int(class_id))
-                    line_width = ANNOTATION_LINE_WIDTH
+                    line_width = 4  # Increased from ANNOTATION_LINE_WIDTH for better visibility
                 
                 # Draw rectangle with appropriate style
                 pen = QPen(color, line_width)
                 pen.setStyle(pen_style)
+                pen.setCosmetic(True)  # Keep consistent width regardless of zoom
                 rect = self._scene.addRect(x, y, w, h, pen)
                 
                 # Draw label with class name and confidence
@@ -210,29 +213,59 @@ class ImageViewer(QGraphicsView):
                     
                     # Add confidence if available
                     if confidence is not None:
-                        label_parts.append(f"{confidence:.2f}")
+                        label_parts.append(f"{confidence:.0%}")
                     
                     label_text = " ".join(label_parts)
                     
+                    # Dynamic font size based on view scale for better readability
+                    view_scale = self.transform().m11()
+                    if view_scale < 0.5:
+                        # Very zoomed out - use larger font
+                        font_size = int(16 / view_scale)
+                    elif view_scale < 1.0:
+                        # Moderately zoomed out - scale font appropriately
+                        font_size = int(12 / view_scale)
+                    else:
+                        # Zoomed in or normal - use standard sizing
+                        font_size = min(12, int(12 / view_scale))
+                    
+                    # Clamp to reasonable range
+                    font_size = max(10, min(36, font_size))
+                    font = QFont("Arial", font_size, QFont.Weight.Bold)
+                    
                     # Measure text to size background appropriately
-                    font = QFont("Arial", 10)
                     temp_text = self._scene.addText(label_text)
                     temp_text.setFont(font)
                     text_rect = temp_text.boundingRect()
                     self._scene.removeItem(temp_text)
                     
-                    # Create background for text
-                    bg_width = text_rect.width() + 6
-                    bg_height = 20
-                    text_bg = self._scene.addRect(x, y - bg_height, bg_width, bg_height, 
-                                                 QPen(Qt.PenStyle.NoPen), 
-                                                 QBrush(color))
+                    # Position label inside the box if it's large enough, otherwise above
+                    bg_width = text_rect.width() + 8
+                    bg_height = text_rect.height() + 4
+                    min_box_height = bg_height * 2
                     
-                    # Draw text
+                    if h > min_box_height:
+                        # Box is large enough - place label inside at top
+                        text_bg = self._scene.addRect(x + 2, y + 2, bg_width, bg_height, 
+                                                     QPen(Qt.PenStyle.NoPen), 
+                                                     QBrush(color))
+                        text_pos_x = x + 5
+                        text_pos_y = y + 2
+                    else:
+                        # Box is too small - place label above
+                        text_bg = self._scene.addRect(x, y - bg_height, bg_width, bg_height, 
+                                                     QPen(Qt.PenStyle.NoPen), 
+                                                     QBrush(color))
+                        text_pos_x = x + 3
+                        text_pos_y = y - bg_height
+                    
+                    # Draw text with better contrast
                     text = self._scene.addText(label_text)
-                    text.setDefaultTextColor(Qt.GlobalColor.white)
+                    # Use COLOR_MANAGER for contrasting text color
+                    text_color = QColor(*COLOR_MANAGER.get_text_color(int(class_id)))
+                    text.setDefaultTextColor(text_color)
                     text.setFont(font)
-                    text.setPos(x + 3, y - bg_height)
+                    text.setPos(text_pos_x, text_pos_y)
     
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming."""

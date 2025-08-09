@@ -90,8 +90,8 @@ class AnnotationItem(QGraphicsRectItem):
         color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
         pen_style = COLOR_MANAGER.get_pen_style(self.annotation.class_id)
         
-        # Scale line width based on selection for better visibility on high-res images
-        base_width = 3 if self.isSelected() else 2
+        # Increase line width for better visibility on high-res images
+        base_width = 5 if self.isSelected() else 4
         pen = QPen(color, base_width)
         pen.setStyle(pen_style)
         pen.setCosmetic(True)  # Keep consistent width regardless of zoom
@@ -203,19 +203,39 @@ class AnnotationItem(QGraphicsRectItem):
             # Get the current view transform scale
             transform = view.transform()
             scale = transform.m11()  # horizontal scale factor
-            # Adjust font size based on zoom level
-            base_size = 12
-            font_size = max(8, min(24, int(base_size / scale)))
+            # Calculate font size that's inversely proportional to zoom
+            # When zoomed out (scale < 1), use larger font
+            # When zoomed in (scale > 1), use smaller font
+            if scale < 0.5:
+                # Very zoomed out - use much larger font
+                font_size = int(18 / scale)
+            elif scale < 1.0:
+                # Moderately zoomed out - scale font appropriately
+                font_size = int(14 / scale)
+            else:
+                # Zoomed in or normal - use standard sizing
+                font_size = min(14, int(14 / scale))
+            
+            # Clamp to reasonable range
+            font_size = max(10, min(48, font_size))
         else:
-            font_size = 12
+            font_size = 14
             
         font = QFont("Arial", font_size, QFont.Weight.Bold)
         painter.setFont(font)
         metrics = painter.fontMetrics()
         text_rect = metrics.boundingRect(text)
         
-        bg_rect = QRectF(rect.left(), rect.top() - text_rect.height() - 4,
-                        text_rect.width() + 8, text_rect.height() + 4)
+        # Position label inside the box if it's large enough, otherwise above
+        min_box_height = text_rect.height() + 8
+        if rect.height() > min_box_height * 2:
+            # Box is large enough - place label inside at top
+            bg_rect = QRectF(rect.left() + 2, rect.top() + 2,
+                            text_rect.width() + 8, text_rect.height() + 4)
+        else:
+            # Box is too small - place label above
+            bg_rect = QRectF(rect.left(), rect.top() - text_rect.height() - 4,
+                            text_rect.width() + 8, text_rect.height() + 4)
         
         # Use COLOR_MANAGER for background color
         bg_color = COLOR_MANAGER.get_qcolor(self.annotation.class_id)
@@ -461,8 +481,8 @@ class AnnotationCanvas(QGraphicsView):
         self._pixmap_item = self._scene.addPixmap(pixmap)
         self._scene.setSceneRect(QRectF(pixmap.rect()))
         
-        # Don't auto-fit, just center the view
-        self.centerOn(self._pixmap_item)
+        # Fit the entire image in view while maintaining aspect ratio
+        self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
     
     def set_annotations(self, annotations: List[Annotation]):
         """Set annotations."""
@@ -617,7 +637,7 @@ class AnnotationCanvas(QGraphicsView):
                 
                 # Create preview rectangle with better visibility
                 # Use a cyan color with thicker line for better contrast on all backgrounds
-                preview_pen = QPen(QColor(0, 255, 255), 3, Qt.PenStyle.DashLine)
+                preview_pen = QPen(QColor(0, 255, 255), 4, Qt.PenStyle.DashLine)
                 preview_pen.setCosmetic(True)  # Keep consistent width regardless of zoom
                 self._preview_rect = self._scene.addRect(
                     QRectF(scene_pos, scene_pos),
