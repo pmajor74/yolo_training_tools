@@ -48,6 +48,7 @@ class ImageViewer(QGraphicsView):
         self._min_zoom: float = 0.1
         self._max_zoom: float = 10.0
         self._fit_on_load: bool = True
+        self._first_image_load = True  # Track if this is the first image load
         
         # Mouse tracking for position
         self.setMouseTracking(True)
@@ -61,10 +62,15 @@ class ImageViewer(QGraphicsView):
         self._pixmap_item = self._scene.addPixmap(pixmap)
         self._scene.setSceneRect(QRectF(pixmap.rect()))
         
-        # Fit the entire image in view while maintaining aspect ratio
-        self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
-        self._zoom_factor = self.transform().m11()
-        self.zoomChanged.emit(self._zoom_factor)
+        # Only fit to view on the first image load, preserve zoom/pan for subsequent images
+        if self._first_image_load:
+            self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self._zoom_factor = self.transform().m11()
+            self.zoomChanged.emit(self._zoom_factor)
+            self._first_image_load = False
+        else:
+            # Just center on the new image without changing zoom
+            self.centerOn(self._pixmap_item)
         
         # Draw annotations if any
         if self._annotations:

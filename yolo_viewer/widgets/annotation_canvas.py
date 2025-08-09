@@ -414,6 +414,7 @@ class AnnotationCanvas(QGraphicsView):
         self._is_read_only = False
         self._class_names: Dict[int, str] = {}  # Mapping of class_id to name
         self._show_class_names = True  # Toggle for showing names vs IDs
+        self._first_image_load = True  # Track if this is the first image load
         
         # Drawing state
         self._is_drawing = False
@@ -494,8 +495,13 @@ class AnnotationCanvas(QGraphicsView):
         self._pixmap_item = self._scene.addPixmap(pixmap)
         self._scene.setSceneRect(QRectF(pixmap.rect()))
         
-        # Fit the entire image in view while maintaining aspect ratio
-        self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+        # Only fit to view on the first image load, preserve zoom/pan for subsequent images
+        if self._first_image_load:
+            self.fitInView(self._pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self._first_image_load = False
+        else:
+            # Just center on the new image without changing zoom
+            self.centerOn(self._pixmap_item)
     
     def set_annotations(self, annotations: List[Annotation]):
         """Set annotations."""
