@@ -227,6 +227,7 @@ class AutoAnnotationMode(BaseMode):
         self._ui_builder.augmentationToggled.connect(self._on_augmentation_toggled)
         self._ui_builder.workflowToggled.connect(self._toggle_workflow)
         self._ui_builder.modelHistoryChanged.connect(self._load_historical_model)
+        self._ui_builder.datasetManage.connect(self._on_dataset_manage)
         self._ui_builder.splitPercentageChanged.connect(self._update_split_percentages)
         self._ui_builder.startTraining.connect(self._start_training)
         self._ui_builder.stopTraining.connect(self._stop_training)
@@ -330,6 +331,13 @@ class AutoAnnotationMode(BaseMode):
         
         if folder_path:
             self.set_folder(folder_path)
+    
+    def _on_dataset_manage(self):
+        """Handle dataset loading."""
+        # Use the dataset handler to manage dataset
+        dataset_path = self._dataset_handler.manage_dataset()
+        if dataset_path:
+            print(f"[INFO] AutoAnnotationMode._on_dataset_manage: Dataset loaded from {dataset_path}")
             
     def _on_start_clicked(self):
         """Handle start button click."""
