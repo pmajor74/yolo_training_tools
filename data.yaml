@@ -2,8 +2,8 @@
 # Dataset root directory (relative to this file or absolute path)
 
 names:
-  0: FORM8
-  1: FORM11
+  0: QR
+  1: DATAMATRIX
 nc: 2
 train: train
 val: val
