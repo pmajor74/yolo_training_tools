@@ -14,6 +14,95 @@ import numpy as np
 from ..core import ModelCache
 
 
+def calculate_iou(box1: Tuple[float, float, float, float], 
+                  box2: Tuple[float, float, float, float]) -> float:
+    """
+    Calculate Intersection over Union (IoU) between two bounding boxes.
+    
+    Args:
+        box1: Tuple of (x, y, width, height) in pixels
+        box2: Tuple of (x, y, width, height) in pixels
+    
+    Returns:
+        IoU value between 0 and 1
+    """
+    x1, y1, w1, h1 = box1
+    x2, y2, w2, h2 = box2
+    
+    # Calculate coordinates of intersection rectangle
+    x_left = max(x1, x2)
+    y_top = max(y1, y2)
+    x_right = min(x1 + w1, x2 + w2)
+    y_bottom = min(y1 + h1, y2 + h2)
+    
+    # Check if there is no intersection
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+    
+    # Calculate intersection area
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    
+    # Calculate union area
+    box1_area = w1 * h1
+    box2_area = w2 * h2
+    union_area = box1_area + box2_area - intersection_area
+    
+    # Calculate IoU
+    if union_area == 0:
+        return 0.0
+    
+    return intersection_area / union_area
+
+
+def apply_cross_class_suppression(proposals: List['AnnotationProposal'], 
+                                 overlap_threshold: float) -> List['AnnotationProposal']:
+    """
+    Apply cross-class suppression to remove lower confidence detections
+    when different classes overlap significantly.
+    
+    Args:
+        proposals: List of annotation proposals
+        overlap_threshold: IoU threshold for suppression (0.0 to 1.0)
+    
+    Returns:
+        Filtered list of proposals
+    """
+    if len(proposals) <= 1:
+        return proposals
+    
+    # Sort proposals by confidence (highest first)
+    sorted_proposals = sorted(proposals, key=lambda p: p.confidence, reverse=True)
+    
+    # Mark proposals to keep
+    keep = [True] * len(sorted_proposals)
+    
+    for i in range(len(sorted_proposals)):
+        if not keep[i]:
+            continue
+            
+        for j in range(i + 1, len(sorted_proposals)):
+            if not keep[j]:
+                continue
+            
+            # Only suppress if classes are different
+            if sorted_proposals[i].class_id == sorted_proposals[j].class_id:
+                continue
+            
+            # Calculate IoU
+            iou = calculate_iou(sorted_proposals[i].bbox, sorted_proposals[j].bbox)
+            
+            # Suppress lower confidence box if IoU exceeds threshold
+            if iou > overlap_threshold:
+                keep[j] = False
+                print(f"[DEBUG] Cross-class suppression: Removing class {sorted_proposals[j].class_id} "
+                      f"(conf={sorted_proposals[j].confidence:.3f}) in favor of class "
+                      f"{sorted_proposals[i].class_id} (conf={sorted_proposals[i].confidence:.3f}), "
+                      f"IoU={iou:.3f}")
+    
+    # Return filtered proposals
+    return [p for p, k in zip(sorted_proposals, keep) if k]
+
+
 class ConfidenceLevel(Enum):
     """Confidence levels for annotation proposals."""
     HIGH = "high"
@@ -153,13 +242,21 @@ class InferenceWorker(QThread):
                  high_threshold: float, 
                  medium_threshold: float,
                  augment: bool = False,
-                 augment_settings: Optional[Dict[str, float]] = None):
+                 augment_settings: Optional[Dict[str, float]] = None,
+                 nms_enabled: bool = True,
+                 nms_iou: float = 0.45,
+                 cross_class_enabled: bool = False,
+                 cross_class_threshold: float = 0.5):
         super().__init__()
         self.image_paths = image_paths
         self.high_threshold = high_threshold
         self.medium_threshold = medium_threshold
         self.augment = augment
         self.augment_settings = augment_settings or {}
+        self.nms_enabled = nms_enabled
+        self.nms_iou = nms_iou
+        self.cross_class_enabled = cross_class_enabled
+        self.cross_class_threshold = cross_class_threshold
         self._is_running = True
         
     def run(self):
@@ -176,11 +273,15 @@ class InferenceWorker(QThread):
                 if not self._is_running:
                     break
                     
-                # Run inference with optional augmentation
+                # Run inference with optional augmentation and NMS settings
+                inference_kwargs = {}
                 if self.augment:
-                    results = model(image_path, augment=True, **self.augment_settings)
-                else:
-                    results = model(image_path)
+                    inference_kwargs['augment'] = True
+                    inference_kwargs.update(self.augment_settings)
+                if self.nms_enabled:
+                    inference_kwargs['iou'] = self.nms_iou
+                
+                results = model(image_path, **inference_kwargs)
                 
                 # Extract proposals
                 proposals = []
@@ -203,6 +304,14 @@ class InferenceWorker(QThread):
                             proposal.is_approved = True
                             
                         proposals.append(proposal)
+                
+                # Apply cross-class suppression if enabled
+                if self.cross_class_enabled and len(proposals) > 1:
+                    original_count = len(proposals)
+                    proposals = apply_cross_class_suppression(proposals, self.cross_class_threshold)
+                    suppressed_count = original_count - len(proposals)
+                    if suppressed_count > 0:
+                        print(f"[INFO] Cross-class suppression removed {suppressed_count} proposals from {image_path}")
                 
                 self.imageProcessed.emit(image_path, proposals)
                 self.progress.emit(i + 1, len(self.image_paths))
@@ -258,7 +367,10 @@ class AutoAnnotationManager(QObject):
         
         return session
     
-    def start_inference(self, image_paths: List[str], augment: bool = False, augment_settings: Optional[Dict[str, float]] = None):
+    def start_inference(self, image_paths: List[str], augment: bool = False, 
+                       augment_settings: Optional[Dict[str, float]] = None,
+                       nms_enabled: bool = True, nms_iou: float = 0.45,
+                       cross_class_enabled: bool = False, cross_class_threshold: float = 0.5):
         """Start batch inference on images."""
         if not self._current_session:
             raise ValueError("No active session")
@@ -268,7 +380,11 @@ class AutoAnnotationManager(QObject):
             self._current_session.high_confidence_threshold,
             self._current_session.medium_confidence_threshold,
             augment,
-            augment_settings
+            augment_settings,
+            nms_enabled,
+            nms_iou,
+            cross_class_enabled,
+            cross_class_threshold
         )
         
         self._worker.progress.connect(self._on_inference_progress)

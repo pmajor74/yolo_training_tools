@@ -37,35 +37,80 @@ class TrainingProcess(QObject):
     
     def start_training(self, config: Dict, output_dir: Path, export_onnx: bool = False):
         """Start the training process."""
-        self._output_dir = output_dir
-        self._training_start_time = datetime.now()
-        self._current_epoch = 0
-        self._total_epochs = config.get('epochs', 100)
-        self._steps_per_epoch_detected = False  # Reset detection flag
-        self._stopped_by_user = False  # Reset stop flag
+        import traceback
         
-        # Create the training script
-        script_path = output_dir / "train_script.py"
-        self._create_training_script(script_path, config, export_onnx)
-        
-        # Create QProcess
-        self._process = QProcess()
-        self._process.setWorkingDirectory(str(Path.cwd()))
-        
-        # Connect signals
-        self._process.readyReadStandardOutput.connect(self._on_output)
-        self._process.readyReadStandardError.connect(self._on_error)
-        self._process.finished.connect(self._on_finished)
-        self._process.errorOccurred.connect(self._on_error_occurred)
-        
-        # Start the process
-        python_exe = sys.executable
-        self.logMessage.emit(f"Starting training with: {python_exe} {script_path}")
-        self._process.start(python_exe, [str(script_path)])
-        
-        if not self._process.waitForStarted(5000):
-            self.logMessage.emit("ERROR: Failed to start training process")
-            self._on_finished(-1, QProcess.ExitStatus.CrashExit)
+        try:
+            print(f"[INFO] TrainingProcess.start_training: Starting with config: {config}")
+            print(f"[INFO] TrainingProcess.start_training: Output directory: {output_dir}")
+            
+            self._output_dir = output_dir
+            self._training_start_time = datetime.now()
+            self._current_epoch = 0
+            self._total_epochs = config.get('epochs', 100)
+            self._steps_per_epoch_detected = False  # Reset detection flag
+            self._stopped_by_user = False  # Reset stop flag
+            
+            # Create the training script
+            script_path = output_dir / "train_script.py"
+            print(f"[INFO] TrainingProcess.start_training: Creating training script at: {script_path}")
+            
+            try:
+                self._create_training_script(script_path, config, export_onnx)
+                print(f"[INFO] TrainingProcess.start_training: Training script created successfully")
+            except Exception as e:
+                print(f"[ERROR] TrainingProcess.start_training: Failed to create training script")
+                print(f"[ERROR] TrainingProcess.start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self.logMessage.emit(f"ERROR: Failed to create training script: {e}")
+                self.trainingFailed.emit(f"Failed to create training script: {e}")
+                return
+            
+            # Create QProcess
+            print(f"[INFO] TrainingProcess.start_training: Creating QProcess...")
+            self._process = QProcess()
+            self._process.setWorkingDirectory(str(Path.cwd()))
+            
+            # Connect signals
+            self._process.readyReadStandardOutput.connect(self._on_output)
+            self._process.readyReadStandardError.connect(self._on_error)
+            self._process.finished.connect(self._on_finished)
+            self._process.errorOccurred.connect(self._on_error_occurred)
+            
+            # Start the process
+            python_exe = sys.executable
+            print(f"[INFO] TrainingProcess.start_training: Python executable: {python_exe}")
+            print(f"[INFO] TrainingProcess.start_training: Script path: {script_path}")
+            
+            self.logMessage.emit(f"Starting training with: {python_exe} {script_path}")
+            self._process.start(python_exe, [str(script_path)])
+            
+            if not self._process.waitForStarted(5000):
+                error_msg = "Failed to start training process within 5 seconds"
+                print(f"[ERROR] TrainingProcess.start_training: {error_msg}")
+                
+                # Get more details about why it failed
+                process_error = self._process.error()
+                print(f"[ERROR] TrainingProcess.start_training: Process error code: {process_error}")
+                print(f"[ERROR] TrainingProcess.start_training: Process state: {self._process.state()}")
+                
+                # Check if script exists
+                if not script_path.exists():
+                    print(f"[ERROR] TrainingProcess.start_training: Training script does not exist: {script_path}")
+                else:
+                    print(f"[INFO] TrainingProcess.start_training: Training script exists: {script_path}")
+                    
+                self.logMessage.emit(f"ERROR: {error_msg}")
+                self._on_finished(-1, QProcess.ExitStatus.CrashExit)
+            else:
+                print(f"[INFO] TrainingProcess.start_training: Training process started successfully")
+                print(f"[INFO] TrainingProcess.start_training: Process PID: {self._process.processId()}")
+                
+        except Exception as e:
+            print(f"[ERROR] TrainingProcess.start_training: Unexpected error")
+            print(f"[ERROR] TrainingProcess.start_training: Exception: {type(e).__name__}: {e}")
+            traceback.print_exc()
+            self.logMessage.emit(f"ERROR: Unexpected error starting training: {e}")
+            self.trainingFailed.emit(f"Unexpected error: {e}")
     
     def stop_training(self):
         """Stop the training process."""
@@ -216,9 +261,12 @@ if __name__ == '__main__':
         output = self._process.readAllStandardOutput()
         text = output.data().decode('utf-8', errors='ignore')
         
-        # Parse and emit output
+        # Parse and emit output line by line
         for line in text.strip().split('\n'):
-            if line:
+            if line.strip():
+                # Always log to console with [TRAINING] prefix
+                print(f"[TRAINING] {line}")
+                # Emit to UI
                 self.logMessage.emit(line)
                 self._parse_output(line)
     
@@ -232,12 +280,80 @@ if __name__ == '__main__':
         error = self._process.readAllStandardError()
         text = error.data().decode('utf-8', errors='ignore')
         
-        # Process stderr output - emit all of it for debugging
-        for line in text.strip().split('\n'):
-            if line:
-                # Always emit the line so we can see what's happening
+        # Process stderr output intelligently
+        # YOLO sends progress bars to stderr with \r characters
+        # We need to filter these out to avoid console spam
+        
+        # Track last progress line to avoid duplicates
+        if not hasattr(self, '_last_progress_line'):
+            self._last_progress_line = ""
+        
+        # Split by both \n and \r to handle progress bars
+        lines = text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Check if this is a progress bar line
+            is_progress_bar = False
+            
+            # Common patterns in YOLO progress bars with the progress bar characters
+            if any(char in line for char in ['█', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '━', '│']):
+                is_progress_bar = True
+            elif '%|' in line and 'it/s' in line:
+                is_progress_bar = True
+                
+            # For progress bars, check if it's significantly different from last one
+            if is_progress_bar:
+                # Extract the core content (epoch number and percentage if present)
+                import re
+                epoch_match = re.search(r'(\d+)/(\d+)', line)
+                percent_match = re.search(r'(\d+)%', line)
+                
+                # Create a signature for this progress line
+                signature = ""
+                if epoch_match:
+                    signature += f"{epoch_match.group(1)}/{epoch_match.group(2)}"
+                if percent_match:
+                    signature += f"_{percent_match.group(1)}%"
+                    
+                # Only show if it's a new epoch or 100% complete or significantly different
+                if signature != self._last_progress_line:
+                    if '100%' in line or (epoch_match and percent_match and int(percent_match.group(1)) % 20 == 0):
+                        # Show major milestones (every 20% and 100%)
+                        print(f"[PROGRESS] {line}")
+                        self.logMessage.emit(line)
+                        self._parse_output(line)
+                        self._last_progress_line = signature
+                continue
+            
+            # Not a progress bar - check if it's an important message
+            # These are typically validation results, errors, or training summaries
+            
+            # Check for training metrics lines (the ones that come after progress bars)
+            if re.match(r'^\d+/\d+\s+[\d.]+G?\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+\d+\s+\d+', line):
+                # This is a training metrics line like "4/100  1.14G  0.797  1.702  1.001  12  640"
+                # Log it but avoid duplicates
+                if line != getattr(self, '_last_metrics_line', ''):
+                    print(f"[METRICS] {line}")
+                    self.logMessage.emit(line)
+                    self._parse_output(line)
+                    self._last_metrics_line = line
+            # Check for validation header or results
+            elif 'Class' in line and 'Images' in line and 'Instances' in line:
+                print(f"[VALIDATION] {line}")
                 self.logMessage.emit(line)
-                # Also parse this line for progress updates since YOLO sends progress to stderr
+            # Check for errors and warnings
+            elif any(error_word in line.upper() for error_word in ['ERROR', 'WARNING', 'EXCEPTION', 'FAILED', 'TRACEBACK']):
+                print(f"[ERROR] {line}")
+                self.logMessage.emit(line)
+                self._parse_output(line)
+            # Other non-numeric starting lines might be important
+            elif line and not line[0].isdigit() and len(line) > 10:
+                print(f"[INFO] {line}")
+                self.logMessage.emit(line)
                 self._parse_output(line)
     
     @pyqtSlot(int, QProcess.ExitStatus)
@@ -313,7 +429,32 @@ if __name__ == '__main__':
             QProcess.ProcessError.UnknownError: "Unknown error occurred"
         }
         
-        self.logMessage.emit(f"\nPROCESS ERROR: {error_messages.get(error, 'Unknown error')}")
+        error_msg = error_messages.get(error, 'Unknown error')
+        print(f"[ERROR] TrainingProcess._on_error_occurred: Process error occurred: {error_msg}")
+        print(f"[ERROR] TrainingProcess._on_error_occurred: Error code: {error}")
+        
+        # Try to get more information
+        if self._process:
+            print(f"[ERROR] TrainingProcess._on_error_occurred: Process state: {self._process.state()}")
+            print(f"[ERROR] TrainingProcess._on_error_occurred: Exit code: {self._process.exitCode()}")
+            print(f"[ERROR] TrainingProcess._on_error_occurred: Exit status: {self._process.exitStatus()}")
+            
+            # Try to read any remaining output
+            try:
+                stdout = self._process.readAllStandardOutput()
+                if stdout:
+                    print(f"[ERROR] TrainingProcess._on_error_occurred: Remaining stdout: {stdout.data().decode('utf-8', errors='replace')}")
+            except Exception as e:
+                print(f"[ERROR] TrainingProcess._on_error_occurred: Failed to read stdout: {e}")
+                
+            try:
+                stderr = self._process.readAllStandardError()
+                if stderr:
+                    print(f"[ERROR] TrainingProcess._on_error_occurred: Remaining stderr: {stderr.data().decode('utf-8', errors='replace')}")
+            except Exception as e:
+                print(f"[ERROR] TrainingProcess._on_error_occurred: Failed to read stderr: {e}")
+        
+        self.logMessage.emit(f"\nPROCESS ERROR: {error_msg}")
         if not self._stopped_by_user:
             self.trainingFailed.emit(error_messages.get(error, 'Unknown error'))
     

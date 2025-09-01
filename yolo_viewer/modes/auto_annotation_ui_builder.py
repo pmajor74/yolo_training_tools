@@ -77,6 +77,12 @@ class UIBuilder(QObject):
         
         # Requirements
         self.model_status_label: Optional[QLabel] = None
+        self.enable_nms_checkbox: Optional[QCheckBox] = None
+        self.nms_iou_slider: Optional[QSlider] = None
+        self.nms_iou_label: Optional[QLabel] = None
+        self.enable_cross_class_checkbox: Optional[QCheckBox] = None
+        self.cross_class_iou_slider: Optional[QSlider] = None
+        self.cross_class_iou_label: Optional[QLabel] = None
         
         # Thresholds
         self.high_conf_slider: Optional[QSlider] = None
@@ -284,6 +290,106 @@ class UIBuilder(QObject):
         self.model_status_label = QLabel("❌ Model not loaded")
         self.model_status_label.setStyleSheet("color: #ff6b6b;")
         requirements_layout.addWidget(self.model_status_label)
+        
+        # Add separator
+        requirements_layout.addSpacing(10)
+        
+        # NMS Settings section
+        nms_title_layout = QHBoxLayout()
+        nms_title_label = QLabel("NMS Settings")
+        nms_title_label.setStyleSheet("font-weight: bold;")
+        nms_title_layout.addWidget(nms_title_label)
+        
+        nms_info_label = InfoLabel(
+            "ℹ",
+            "Non-Maximum Suppression (NMS) removes duplicate detections:\n\n"
+            "• When enabled, overlapping bounding boxes are filtered\n"
+            "• IOU threshold controls overlap sensitivity\n"
+            "• Lower values = more aggressive filtering\n"
+            "• Higher values = keep more overlapping boxes\n\n"
+            "Recommended: 0.45 for general use\n"
+            "Use 0.1-0.3 for strict filtering\n"
+            "Use 0.6-0.9 for lenient filtering"
+        )
+        nms_info_label.setStyleSheet("color: #14ffec; font-weight: bold; font-size: 14px;")
+        nms_title_layout.addWidget(nms_info_label)
+        nms_title_layout.addStretch()
+        requirements_layout.addLayout(nms_title_layout)
+        
+        # NMS checkbox
+        self.enable_nms_checkbox = QCheckBox("Enable NMS filtering")
+        self.enable_nms_checkbox.setToolTip(
+            "Apply Non-Maximum Suppression to remove duplicate detections.\n"
+            "This helps clean up overlapping bounding boxes."
+        )
+        self.enable_nms_checkbox.setChecked(True)  # Default to enabled
+        self.enable_nms_checkbox.stateChanged.connect(self._on_nms_toggled)
+        requirements_layout.addWidget(self.enable_nms_checkbox)
+        
+        # IOU threshold slider
+        iou_layout = QHBoxLayout()
+        iou_layout.addWidget(QLabel("IOU:"))
+        self.nms_iou_slider = QSlider(Qt.Orientation.Horizontal)
+        self.nms_iou_slider.setRange(10, 90)  # 0.1 to 0.9
+        self.nms_iou_slider.setValue(45)  # Default 0.45
+        self.nms_iou_slider.valueChanged.connect(self._update_nms_iou_label)
+        iou_layout.addWidget(self.nms_iou_slider)
+        self.nms_iou_label = QLabel("0.45")
+        self.nms_iou_label.setFixedWidth(40)
+        iou_layout.addWidget(self.nms_iou_label)
+        requirements_layout.addLayout(iou_layout)
+        
+        # Add separator for Cross-Class Suppression
+        requirements_layout.addSpacing(10)
+        
+        # Cross-Class Suppression section
+        cross_class_title_layout = QHBoxLayout()
+        cross_class_title_label = QLabel("Cross-Class Suppression")
+        cross_class_title_label.setStyleSheet("font-weight: bold;")
+        cross_class_title_layout.addWidget(cross_class_title_label)
+        
+        cross_class_info_label = InfoLabel(
+            "ℹ",
+            "Cross-Class Suppression removes duplicate detections across different classes:\n\n"
+            "• When enabled, if two detections from different classes overlap significantly,\n"
+            "  only the highest confidence detection is kept\n"
+            "• Overlap threshold controls how much boxes must overlap to trigger suppression\n"
+            "• Use this when objects are mistakenly detected as multiple classes\n\n"
+            "Example: A form detected as both 'form8' and 'form11' -\n"
+            "keeps only the most confident prediction\n\n"
+            "Recommended threshold: 0.5 (50% overlap)\n"
+            "Lower values (0.3) = aggressive suppression\n"
+            "Higher values (0.7+) = only suppress near-identical boxes"
+        )
+        cross_class_info_label.setStyleSheet("color: #14ffec; font-weight: bold; font-size: 14px;")
+        cross_class_title_layout.addWidget(cross_class_info_label)
+        cross_class_title_layout.addStretch()
+        requirements_layout.addLayout(cross_class_title_layout)
+        
+        # Cross-Class checkbox
+        self.enable_cross_class_checkbox = QCheckBox("Enable Cross-Class Suppression")
+        self.enable_cross_class_checkbox.setToolTip(
+            "Remove lower confidence detections when different classes overlap.\n"
+            "Keeps only the highest confidence detection regardless of class."
+        )
+        self.enable_cross_class_checkbox.setChecked(False)  # Default to disabled
+        self.enable_cross_class_checkbox.stateChanged.connect(self._on_cross_class_toggled)
+        requirements_layout.addWidget(self.enable_cross_class_checkbox)
+        
+        # Cross-Class overlap threshold slider
+        cross_class_layout = QHBoxLayout()
+        cross_class_layout.addWidget(QLabel("Overlap:"))
+        self.cross_class_iou_slider = QSlider(Qt.Orientation.Horizontal)
+        self.cross_class_iou_slider.setRange(30, 90)  # 0.3 to 0.9
+        self.cross_class_iou_slider.setValue(50)  # Default 0.5
+        self.cross_class_iou_slider.valueChanged.connect(self._update_cross_class_iou_label)
+        self.cross_class_iou_slider.setEnabled(False)  # Disabled by default
+        cross_class_layout.addWidget(self.cross_class_iou_slider)
+        self.cross_class_iou_label = QLabel("0.50")
+        self.cross_class_iou_label.setFixedWidth(40)
+        self.cross_class_iou_label.setEnabled(False)  # Disabled by default
+        cross_class_layout.addWidget(self.cross_class_iou_label)
+        requirements_layout.addLayout(cross_class_layout)
         
         requirements_group.setLayout(requirements_layout)
         return requirements_group
@@ -881,6 +987,24 @@ class UIBuilder(QObject):
         self.high_conf_label.setText(f"{high_value:.2f}")
         self.med_conf_label.setText(f"{med_value:.2f}")
     
+    def _on_nms_toggled(self, checked: int):
+        """Handle NMS checkbox toggle."""
+        self.nms_iou_slider.setEnabled(bool(checked))
+        self.nms_iou_label.setEnabled(bool(checked))
+    
+    def _update_nms_iou_label(self):
+        """Update NMS IOU threshold label."""
+        self.nms_iou_label.setText(f"{self.nms_iou_slider.value() / 100:.2f}")
+    
+    def _on_cross_class_toggled(self, checked: int):
+        """Handle Cross-Class Suppression checkbox toggle."""
+        self.cross_class_iou_slider.setEnabled(bool(checked))
+        self.cross_class_iou_label.setEnabled(bool(checked))
+    
+    def _update_cross_class_iou_label(self):
+        """Update Cross-Class Suppression overlap threshold label."""
+        self.cross_class_iou_label.setText(f"{self.cross_class_iou_slider.value() / 100:.2f}")
+    
     def get_threshold_values(self) -> Tuple[float, float]:
         """Get current threshold values."""
         return (
@@ -921,6 +1045,18 @@ class UIBuilder(QObject):
         if self.enable_augmentation_checkbox.isChecked():
             return self.augmentation_settings.get_settings()
         return {}
+    
+    def get_nms_settings(self) -> Tuple[bool, float]:
+        """Get NMS settings (enabled, iou_threshold)."""
+        enabled = self.enable_nms_checkbox.isChecked()
+        iou_threshold = self.nms_iou_slider.value() / 100.0
+        return enabled, iou_threshold
+    
+    def get_cross_class_settings(self) -> Tuple[bool, float]:
+        """Get Cross-Class Suppression settings (enabled, overlap_threshold)."""
+        enabled = self.enable_cross_class_checkbox.isChecked()
+        overlap_threshold = self.cross_class_iou_slider.value() / 100.0
+        return enabled, overlap_threshold
     
     def show_augmentation_settings(self, visible: bool):
         """Show or hide augmentation settings."""

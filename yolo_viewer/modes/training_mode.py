@@ -425,23 +425,33 @@ class TrainingMode(BaseMode):
     def _count_training_images(self):
         """Count the number of training images in the dataset."""
         try:
+            print(f"[DEBUG] _count_training_images: Reading YAML from: {self._dataset_path}")
             with open(self._dataset_path, 'r') as f:
                 data = yaml.safe_load(f)
             
             # Get the base path
             yaml_dir = self._dataset_path.parent
+            print(f"[DEBUG] _count_training_images: YAML directory: {yaml_dir}")
+            
             if 'path' in data and data['path']:
                 # If path is absolute, use it; otherwise make it relative to yaml dir
                 path_val = Path(data['path'])
+                print(f"[DEBUG] _count_training_images: Path value from YAML: '{data['path']}'")
+                
                 if path_val.is_absolute():
                     base_path = path_val
+                    print(f"[DEBUG] _count_training_images: Using absolute path: {base_path}")
                 else:
                     base_path = yaml_dir / path_val
+                    print(f"[DEBUG] _count_training_images: Using relative path: {base_path}")
             else:
                 base_path = yaml_dir
+                print(f"[DEBUG] _count_training_images: No path in YAML, using YAML directory: {base_path}")
             
             # Ensure base_path exists
             if not base_path.exists():
+                print(f"[WARNING] _count_training_images: Base path doesn't exist: {base_path}")
+                print(f"[WARNING] _count_training_images: Falling back to YAML directory: {yaml_dir}")
                 base_path = yaml_dir
             
             # Get train path
@@ -457,26 +467,38 @@ class TrainingMode(BaseMode):
                     return
                 
                 # Count images in each train path
+                print(f"[DEBUG] _count_training_images: Train paths to check: {train_paths}")
                 for train_path_str in train_paths:
                     # Build full path
                     if Path(train_path_str).is_absolute():
                         full_train_path = Path(train_path_str)
+                        print(f"[DEBUG] _count_training_images: Absolute train path: {full_train_path}")
                     else:
                         full_train_path = base_path / train_path_str
+                        print(f"[DEBUG] _count_training_images: Relative train path: {train_path_str} -> {full_train_path}")
                     
                     if full_train_path.exists():
+                        print(f"[DEBUG] _count_training_images: Train path exists: {full_train_path}")
                         # First check if this is directly an images folder or contains an images subfolder
                         if full_train_path.name == 'images' or (full_train_path / 'images').exists():
                             # Images are in 'images' subdirectory
                             img_dir = full_train_path / 'images' if full_train_path.name != 'images' else full_train_path
+                            print(f"[DEBUG] _count_training_images: Looking for images in 'images' subdirectory: {img_dir}")
                         else:
                             # Images are directly in the train directory
                             img_dir = full_train_path
+                            print(f"[DEBUG] _count_training_images: Looking for images directly in: {img_dir}")
                         
                         # Count only image files (not .txt annotation files)
-                        for file in img_dir.iterdir():
-                            if file.is_file() and file.suffix.lower() in IMAGE_EXTENSIONS:
-                                self._num_train_images += 1
+                        if img_dir.exists():
+                            for file in img_dir.iterdir():
+                                if file.is_file() and file.suffix.lower() in IMAGE_EXTENSIONS:
+                                    self._num_train_images += 1
+                            print(f"[DEBUG] _count_training_images: Found {self._num_train_images} images in {img_dir}")
+                        else:
+                            print(f"[ERROR] _count_training_images: Image directory doesn't exist: {img_dir}")
+                    else:
+                        print(f"[ERROR] _count_training_images: Train path doesn't exist: {full_train_path}")
                 
                 # Update label with count
                 if self._num_train_images > 0:
@@ -492,165 +514,260 @@ class TrainingMode(BaseMode):
     @pyqtSlot()
     def _start_training(self):
         """Start the training process."""
-        print("=== TRAINING START DEBUG ===")
-        print(f"_start_training() called, dataset_path: {self._dataset_path}")
-        
-        # Validate inputs
-        if not self._dataset_path or not self._dataset_path.exists():
-            print(f"Dataset validation failed: path={self._dataset_path}, exists={self._dataset_path.exists() if self._dataset_path else 'None'}")
-            QMessageBox.warning(self, "Warning", "Please select a valid dataset")
-            return
-        
-        print(f"Dataset validation passed: {self._dataset_path}")
-        
-        # Get the actual dataset directory from the YAML file
-        actual_dataset_path = self._get_dataset_directory_from_yaml()
-        print(f"Actual dataset directory: {actual_dataset_path}")
-        
-        # Check and convert TIF files if needed
-        tif_check_msg = f"Checking TIF file formats in dataset: {actual_dataset_path}"
-        self._log(tif_check_msg)
-        print(f"LOG: {tif_check_msg}")
+        import traceback
         
         try:
-            print(f"Calling TifFormatChecker.check_and_convert_if_needed...")
-            conversion_result = TifFormatChecker.check_and_convert_if_needed(actual_dataset_path, self, self._log)
-            print(f"TIF check result: {conversion_result}")
+            print("=== TRAINING START DEBUG ===")
+            print(f"[INFO] TrainingMode._start_training: Method called")
+            print(f"[INFO] TrainingMode._start_training: dataset_path = {self._dataset_path}")
             
-            if not conversion_result:
-                # User cancelled conversion or conversion failed
-                cancel_msg = "Training cancelled: TIF file conversion declined or failed"
-                self._log(cancel_msg)
-                print(f"LOG: {cancel_msg}")
-                QMessageBox.information(self, "Training Cancelled", 
-                                      "Training cancelled. TIF files must be in RGB format for YOLO training.")
+            # Validate inputs
+            if not self._dataset_path or not self._dataset_path.exists():
+                print(f"[ERROR] TrainingMode._start_training: Dataset validation failed")
+                print(f"[ERROR] TrainingMode._start_training: path={self._dataset_path}")
+                print(f"[ERROR] TrainingMode._start_training: exists={self._dataset_path.exists() if self._dataset_path else 'None'}")
+                QMessageBox.warning(self, "Warning", "Please select a valid dataset")
                 return
-        except Exception as e:
-            error_msg = f"Error during TIF format check: {e}"
-            self._log(error_msg)
-            print(f"LOG: {error_msg}")
-            print(f"EXCEPTION DETAILS: {type(e).__name__}: {e}")
-            import traceback
-            print(f"TRACEBACK: {traceback.format_exc()}")
-            QMessageBox.warning(self, "Error", f"Error checking TIF files: {e}")
-            return
-        
-        print("TIF check completed successfully, continuing with training...")
-        
-        # Check if model is loaded for training
-        model_cache = ModelCache()
-        if not self.pretrained_check.isChecked() and not model_cache.model:
-            QMessageBox.warning(
-                self, 
-                "Warning", 
-                "Please load a model in Model Management tab or enable 'Use Pre-trained Weights'"
-            )
-            return
-        
-        # Create output directory first
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._output_dir = Path("runs/train") / f"train_{timestamp}"
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Prepare training configuration (now that output_dir exists)
-        config = self._prepare_training_config()
-        
-        # Save configuration
-        config_path = self._output_dir / "training_config.yaml"
-        with open(config_path, 'w') as f:
-            yaml.dump(config, f)
-        
-        # Update UI state
-        self._is_training = True
-        self._current_epoch = 0
-        self._total_epochs = config['epochs']
-        self._current_step = 0
-        
-        # Calculate total steps
-        batch_size = config['batch']
-        if self._num_train_images > 0:
-            # Use ceiling division to match how YOLO calculates batches
-            import math
-            self._steps_per_epoch = math.ceil(self._num_train_images / batch_size)
-            self._total_steps = self._steps_per_epoch * self._total_epochs
-            # Log the calculation for debugging
-            self._log(f"[DEBUG] Initial step calculation: {self._num_train_images} images / {batch_size} batch size = {self._steps_per_epoch} steps/epoch")
-            self._log(f"[DEBUG] Total steps: {self._steps_per_epoch} × {self._total_epochs} epochs = {self._total_steps}")
-        else:
-            # Estimate if we couldn't count images
-            self._steps_per_epoch = 100  # Default estimate
-            self._total_steps = self._steps_per_epoch * self._total_epochs
-            self._log(f"[DEBUG] Using estimated steps: {self._steps_per_epoch} steps/epoch × {self._total_epochs} epochs = {self._total_steps}")
-        
-        self.start_btn.setEnabled(False)
-        self.stop_btn.setEnabled(True)
-        self._training_start_time = datetime.now()
-        
-        # Clear log and reset progress
-        self.log_text.clear()
-        self.overall_progress.setValue(0)
-        self.overall_progress.setMaximum(self._total_steps)
-        self.epoch_progress.setValue(0) 
-        self.epoch_progress.setMaximum(100)
-        self.step_label.setText(f"Epoch 0/{self._total_epochs} • 0/{self._total_steps} steps")
-        self.metrics_label.setText("Loss: --, mAP: --")
-        
-        # Clear and start charts
-        self.charts_widget.clear_data()
-        self.charts_widget.start_monitoring()
-        
-        # Set output directory for results widget
-        self.results_widget.set_output_directory(self._output_dir)
-        
-        # Automatically switch to Charts tab
-        self.output_tabs.setCurrentIndex(1)  # Charts is the second tab (index 1)
-        
-        self._log("=" * 60)
-        self._log("Training started at " + self._training_start_time.strftime("%Y-%m-%d %H:%M:%S"))
-        self._log(f"Output directory: {self._output_dir}")
-        
-        # Log device information
-        device = config['device']
-        device_name = "CPU"
-        if device == "cuda":
+            
+            print(f"[INFO] TrainingMode._start_training: Dataset validation passed: {self._dataset_path}")
+            
+            # Get the actual dataset directory from the YAML file
             try:
-                import torch
-                if torch.cuda.is_available():
-                    device_name = f"GPU (CUDA) - {torch.cuda.get_device_name(0)}"
+                actual_dataset_path = self._get_dataset_directory_from_yaml()
+                print(f"[INFO] TrainingMode._start_training: Actual dataset directory: {actual_dataset_path}")
+            except Exception as e:
+                print(f"[ERROR] TrainingMode._start_training: Failed to get dataset directory from YAML")
+                print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self._log(f"Error getting dataset directory: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to read dataset configuration:\n{e}")
+                return
+        
+            # Check and convert TIF files if needed
+            tif_check_msg = f"Checking TIF file formats in dataset: {actual_dataset_path}"
+            self._log(tif_check_msg)
+            print(f"[INFO] TrainingMode._start_training: {tif_check_msg}")
+            
+            try:
+                print(f"[INFO] TrainingMode._start_training: Calling TifFormatChecker.check_and_convert_if_needed...")
+                conversion_result = TifFormatChecker.check_and_convert_if_needed(actual_dataset_path, self, self._log)
+                print(f"[INFO] TrainingMode._start_training: TIF check result: {conversion_result}")
+                
+                if not conversion_result:
+                    # User cancelled conversion or conversion failed
+                    cancel_msg = "Training cancelled: TIF file conversion declined or failed"
+                    self._log(cancel_msg)
+                    print(f"[INFO] TrainingMode._start_training: {cancel_msg}")
+                    QMessageBox.information(self, "Training Cancelled", 
+                                          "Training cancelled. TIF files must be in RGB format for YOLO training.")
+                    return
+            except Exception as e:
+                error_msg = f"Error during TIF format check: {e}"
+                self._log(error_msg)
+                print(f"[ERROR] TrainingMode._start_training: {error_msg}")
+                print(f"[ERROR] TrainingMode._start_training: Exception type: {type(e).__name__}")
+                print(f"[ERROR] TrainingMode._start_training: Exception details: {e}")
+                traceback.print_exc()
+                QMessageBox.warning(self, "Error", f"Error checking TIF files: {e}")
+                return
+            
+            print(f"[INFO] TrainingMode._start_training: TIF check completed successfully, continuing with training...")
+        
+            # Check if model is loaded for training
+            print(f"[INFO] TrainingMode._start_training: Checking model availability...")
+            model_cache = ModelCache()
+            if not self.pretrained_check.isChecked() and not model_cache.model:
+                print(f"[ERROR] TrainingMode._start_training: No model loaded and pretrained not checked")
+                QMessageBox.warning(
+                    self, 
+                    "Warning", 
+                    "Please load a model in Model Management tab or enable 'Use Pre-trained Weights'"
+                )
+                return
+            
+            # Create output directory first
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self._output_dir = Path("runs/train") / f"train_{timestamp}"
+                self._output_dir.mkdir(parents=True, exist_ok=True)
+                print(f"[INFO] TrainingMode._start_training: Created output directory: {self._output_dir}")
+            except Exception as e:
+                print(f"[ERROR] TrainingMode._start_training: Failed to create output directory")
+                print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self._log(f"Error creating output directory: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to create output directory:\n{e}")
+                return
+            
+            # Prepare training configuration (now that output_dir exists)
+            try:
+                print(f"[INFO] TrainingMode._start_training: Preparing training configuration...")
+                config = self._prepare_training_config()
+                print(f"[INFO] TrainingMode._start_training: Configuration prepared: {config}")
+            except Exception as e:
+                print(f"[ERROR] TrainingMode._start_training: Failed to prepare training configuration")
+                print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self._log(f"Error preparing training configuration: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to prepare training configuration:\n{e}")
+                return
+            
+            # Save configuration
+            try:
+                config_path = self._output_dir / "training_config.yaml"
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f)
+                print(f"[INFO] TrainingMode._start_training: Saved configuration to: {config_path}")
+            except Exception as e:
+                print(f"[ERROR] TrainingMode._start_training: Failed to save configuration")
+                print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self._log(f"Error saving configuration: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to save configuration:\n{e}")
+                return
+        
+            # Update UI state
+            print(f"[INFO] TrainingMode._start_training: Updating UI state...")
+            self._is_training = True
+            self._current_epoch = 0
+            self._total_epochs = config['epochs']
+            self._current_step = 0
+            
+            # Calculate total steps
+            batch_size = config['batch']
+            if self._num_train_images > 0:
+                # Use ceiling division to match how YOLO calculates batches
+                import math
+                self._steps_per_epoch = math.ceil(self._num_train_images / batch_size)
+                self._total_steps = self._steps_per_epoch * self._total_epochs
+                # Log the calculation for debugging
+                self._log(f"[DEBUG] Initial step calculation: {self._num_train_images} images / {batch_size} batch size = {self._steps_per_epoch} steps/epoch")
+                self._log(f"[DEBUG] Total steps: {self._steps_per_epoch} × {self._total_epochs} epochs = {self._total_steps}")
+                print(f"[INFO] TrainingMode._start_training: Steps calculation: {self._num_train_images} images / {batch_size} batch = {self._steps_per_epoch} steps/epoch")
+            else:
+                # Estimate if we couldn't count images
+                self._steps_per_epoch = 100  # Default estimate
+                self._total_steps = self._steps_per_epoch * self._total_epochs
+                self._log(f"[DEBUG] Using estimated steps: {self._steps_per_epoch} steps/epoch × {self._total_epochs} epochs = {self._total_steps}")
+                print(f"[INFO] TrainingMode._start_training: Using estimated steps: {self._steps_per_epoch} steps/epoch")
+            
+            self.start_btn.setEnabled(False)
+            self.stop_btn.setEnabled(True)
+            self._training_start_time = datetime.now()
+            
+            # Clear log and reset progress
+            self.log_text.clear()
+            self.overall_progress.setValue(0)
+            self.overall_progress.setMaximum(self._total_steps)
+            self.epoch_progress.setValue(0) 
+            self.epoch_progress.setMaximum(100)
+            self.step_label.setText(f"Epoch 0/{self._total_epochs} • 0/{self._total_steps} steps")
+            self.metrics_label.setText("Loss: --, mAP: --")
+            
+            # Clear and start charts
+            self.charts_widget.clear_data()
+            self.charts_widget.start_monitoring()
+            
+            # Set output directory for results widget (delay to avoid conflicts)
+            # The results will be loaded when training completes
+            # self.results_widget.set_output_directory(self._output_dir)
+            
+            # Automatically switch to Charts tab
+            self.output_tabs.setCurrentIndex(1)  # Charts is the second tab (index 1)
+            
+            self._log("=" * 60)
+            self._log("Training started at " + self._training_start_time.strftime("%Y-%m-%d %H:%M:%S"))
+            self._log(f"Output directory: {self._output_dir}")
+            
+            # Log device information
+            device = config['device']
+            device_name = "CPU"
+            if device == "cuda":
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        device_name = f"GPU (CUDA) - {torch.cuda.get_device_name(0)}"
+                except:
+                    device_name = "GPU (CUDA)"
+            elif device == "mps":
+                device_name = "GPU (Apple Silicon)"
+            self._log(f"Training device: {device_name}")
+            
+            if self._num_train_images > 0:
+                self._log(f"Dataset: {self._num_train_images} images, batch size: {batch_size}")
+                self._log(f"Steps per epoch: {self._num_train_images} ÷ {batch_size} = {self._steps_per_epoch}")
+                self._log(f"Total training steps: {self._total_steps} ({self._steps_per_epoch} steps/epoch × {self._total_epochs} epochs)")
+            self._log("=" * 60)
+            
+            # Start update timer
+            self.update_timer.start(1000)  # Update every second
+        
+            # Create and start training process
+            try:
+                print(f"[INFO] TrainingMode._start_training: Creating TrainingProcess...")
+                self._training_process = TrainingProcess()
+                self._training_process.logMessage.connect(self._log)
+                self._training_process.progressUpdate.connect(self._on_progress_update)
+                self._training_process.epochProgress.connect(self._on_epoch_progress)
+                self._training_process.batchProgress.connect(self._on_batch_progress)
+                self._training_process.metricsUpdate.connect(self._on_metrics_update)
+                self._training_process.trainingCompleted.connect(self._on_training_completed)
+                self._training_process.trainingFailed.connect(self._on_training_failed)
+                self._training_process.stepInfoDetected.connect(self._on_steps_detected)
+                self._training_process.trainingStopped.connect(self._on_training_stopped)
+                
+                # Connect charts
+                self._training_process.progressUpdate.connect(self.charts_widget.on_epoch_update)
+                
+                print(f"[INFO] TrainingMode._start_training: Starting training process...")
+                print(f"[INFO] TrainingMode._start_training: Config: {config}")
+                print(f"[INFO] TrainingMode._start_training: Output dir: {self._output_dir}")
+                print(f"[INFO] TrainingMode._start_training: Export ONNX: {self.export_onnx_check.isChecked()}")
+                
+                self._training_process.start_training(config, self._output_dir, self.export_onnx_check.isChecked())
+                
+                # Emit signal
+                self.trainingStarted.emit(str(config_path))
+                print(f"[INFO] TrainingMode._start_training: Training started successfully")
+                
+            except Exception as e:
+                print(f"[ERROR] TrainingMode._start_training: Failed to start training process")
+                print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+                traceback.print_exc()
+                self._log(f"Error starting training process: {e}")
+                
+                # Reset UI state on error
+                self._is_training = False
+                self.start_btn.setEnabled(True)
+                self.stop_btn.setEnabled(False)
+                self.update_timer.stop()
+                
+                QMessageBox.critical(self, "Error", f"Failed to start training process:\n{e}")
+                return
+                
+        except Exception as e:
+            # Catch-all for any unexpected exceptions
+            print(f"[ERROR] TrainingMode._start_training: Unexpected error in _start_training")
+            print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
+            print(f"[ERROR] TrainingMode._start_training: Full exception details:")
+            traceback.print_exc()
+            
+            # Log to UI
+            self._log(f"Unexpected error: {e}")
+            
+            # Reset UI state
+            try:
+                self._is_training = False
+                self.start_btn.setEnabled(True)
+                self.stop_btn.setEnabled(False)
+                if hasattr(self, 'update_timer'):
+                    self.update_timer.stop()
             except:
-                device_name = "GPU (CUDA)"
-        elif device == "mps":
-            device_name = "GPU (Apple Silicon)"
-        self._log(f"Training device: {device_name}")
-        
-        if self._num_train_images > 0:
-            self._log(f"Dataset: {self._num_train_images} images, batch size: {batch_size}")
-            self._log(f"Steps per epoch: {self._num_train_images} ÷ {batch_size} = {self._steps_per_epoch}")
-            self._log(f"Total training steps: {self._total_steps} ({self._steps_per_epoch} steps/epoch × {self._total_epochs} epochs)")
-        self._log("=" * 60)
-        
-        # Start update timer
-        self.update_timer.start(1000)  # Update every second
-        
-        # Create and start training process
-        self._training_process = TrainingProcess()
-        self._training_process.logMessage.connect(self._log)
-        self._training_process.progressUpdate.connect(self._on_progress_update)
-        self._training_process.epochProgress.connect(self._on_epoch_progress)
-        self._training_process.batchProgress.connect(self._on_batch_progress)
-        self._training_process.metricsUpdate.connect(self._on_metrics_update)
-        self._training_process.trainingCompleted.connect(self._on_training_completed)
-        self._training_process.trainingFailed.connect(self._on_training_failed)
-        self._training_process.stepInfoDetected.connect(self._on_steps_detected)
-        self._training_process.trainingStopped.connect(self._on_training_stopped)
-        
-        # Connect charts
-        self._training_process.progressUpdate.connect(self.charts_widget.on_epoch_update)
-        
-        self._training_process.start_training(config, self._output_dir, self.export_onnx_check.isChecked())
-        
-        # Emit signal
-        self.trainingStarted.emit(str(config_path))
+                pass
+            
+            # Show error dialog
+            QMessageBox.critical(self, "Unexpected Error", 
+                               f"An unexpected error occurred while starting training:\n\n{type(e).__name__}: {e}\n\nPlease check the console for more details.")
     
     @pyqtSlot()
     def _stop_training(self):
@@ -717,27 +834,49 @@ class TrainingMode(BaseMode):
         """Extract the actual dataset directory from the YAML file."""
         try:
             import yaml
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: Reading YAML from: {self._dataset_path}")
             with open(self._dataset_path, 'r') as f:
                 config = yaml.safe_load(f)
+            
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: YAML contents: {config}")
                 
             # Get the path from the YAML config
             dataset_root = config.get('path', '.')
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: Dataset root from YAML: '{dataset_root}'")
             
             # If it's a relative path, make it relative to the YAML file location
+            yaml_dir = self._dataset_path.parent
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: YAML directory: {yaml_dir}")
+            
             if not Path(dataset_root).is_absolute():
-                yaml_dir = self._dataset_path.parent
                 actual_path = yaml_dir / dataset_root
+                print(f"[DEBUG] _get_dataset_directory_from_yaml: Relative path detected, resolving to: {actual_path}")
             else:
                 actual_path = Path(dataset_root)
+                print(f"[DEBUG] _get_dataset_directory_from_yaml: Absolute path detected: {actual_path}")
                 
-            print(f"YAML config path: {dataset_root}")
-            print(f"Resolved dataset path: {actual_path}")
-            return actual_path.resolve()
+            resolved_path = actual_path.resolve()
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: Final resolved path: {resolved_path}")
+            print(f"[DEBUG] _get_dataset_directory_from_yaml: Path exists: {resolved_path.exists()}")
+            
+            if not resolved_path.exists():
+                print(f"[ERROR] _get_dataset_directory_from_yaml: Resolved path does not exist!")
+                print(f"[ERROR] _get_dataset_directory_from_yaml: Looking for alternative paths...")
+                # Try without resolve() in case of symlink issues
+                if actual_path.exists():
+                    print(f"[INFO] _get_dataset_directory_from_yaml: Unresolved path exists: {actual_path}")
+                    return actual_path
+                    
+            return resolved_path
             
         except Exception as e:
-            print(f"Error reading YAML config: {e}")
+            print(f"[ERROR] _get_dataset_directory_from_yaml: Exception occurred: {e}")
+            import traceback
+            traceback.print_exc()
             # Fall back to using the YAML file's directory
-            return self._dataset_path.parent
+            fallback_path = self._dataset_path.parent
+            print(f"[ERROR] _get_dataset_directory_from_yaml: Falling back to YAML parent directory: {fallback_path}")
+            return fallback_path
 
     def _prepare_training_config(self) -> Dict:
         """Prepare training configuration."""
@@ -824,8 +963,12 @@ class TrainingMode(BaseMode):
             yaml_path = self._dataset_manager.get_yaml_path()
             if yaml_path:
                 self._dataset_path = yaml_path
-                self._dataset_edit.setText(str(yaml_path))
-                self._validate_dataset(yaml_path)
+                self.dataset_label.setText(str(yaml_path.name))
+                self.dataset_label.setToolTip(str(yaml_path))
+                # Parse and display dataset info
+                self._parse_and_display_dataset_info()
+                # Try to count training images
+                self._count_training_images()
     
     def _on_deactivate(self) -> Optional[bool]:
         """Called when mode is deactivated."""
@@ -1001,9 +1144,13 @@ class TrainingMode(BaseMode):
         if not self._dataset_path:
             self._dataset_path = yaml_path
             # Only update UI if it exists (mode has been activated)
-            if hasattr(self, '_dataset_edit'):
-                self._dataset_edit.setText(str(yaml_path))
-                self._validate_dataset(yaml_path)
+            if hasattr(self, 'dataset_label'):
+                self.dataset_label.setText(str(yaml_path.name))
+                self.dataset_label.setToolTip(str(yaml_path))
+                # Parse and display dataset info
+                self._parse_and_display_dataset_info()
+                # Try to count training images
+                self._count_training_images()
     
     @pyqtSlot(str)
     def _on_training_stopped(self, message: str):

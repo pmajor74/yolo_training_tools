@@ -433,6 +433,8 @@ class AutoAnnotationMode(BaseMode):
         high_threshold, med_threshold = self._ui_builder.get_threshold_values()
         augment = self._enable_augmentation_checkbox.isChecked()
         augment_settings = self._ui_builder.get_augmentation_settings() if augment else None
+        nms_enabled, nms_iou = self._ui_builder.get_nms_settings()
+        cross_class_enabled, cross_class_threshold = self._ui_builder.get_cross_class_settings()
         
         # Start processing
         self._image_processor.start_processing(
@@ -441,7 +443,11 @@ class AutoAnnotationMode(BaseMode):
             high_threshold,
             med_threshold,
             augment,
-            augment_settings
+            augment_settings,
+            nms_enabled,
+            nms_iou,
+            cross_class_enabled,
+            cross_class_threshold
         )
         
         # Load images to gallery

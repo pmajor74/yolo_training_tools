@@ -75,7 +75,9 @@ class ImageProcessor(QObject):
     
     def start_processing(self, folder: Path, include_annotated: bool,
                         high_threshold: float, med_threshold: float,
-                        augment: bool = False, augment_settings: Optional[Dict] = None):
+                        augment: bool = False, augment_settings: Optional[Dict] = None,
+                        nms_enabled: bool = True, nms_iou: float = 0.45,
+                        cross_class_enabled: bool = False, cross_class_threshold: float = 0.5):
         """
         Start auto-annotation processing.
         
@@ -86,6 +88,10 @@ class ImageProcessor(QObject):
             med_threshold: Medium confidence threshold
             augment: Whether to use augmentation
             augment_settings: Augmentation settings if enabled
+            nms_enabled: Whether to apply NMS filtering
+            nms_iou: IOU threshold for NMS (0.1 to 0.9)
+            cross_class_enabled: Whether to apply cross-class suppression
+            cross_class_threshold: Overlap threshold for cross-class suppression (0.1 to 0.9)
         """
         self._current_folder = folder
         
@@ -147,7 +153,11 @@ class ImageProcessor(QObject):
             self._annotation_manager.start_inference(
                 self._all_processed_images,
                 augment=augment,
-                augment_settings=augment_settings
+                augment_settings=augment_settings,
+                nms_enabled=nms_enabled,
+                nms_iou=nms_iou,
+                cross_class_enabled=cross_class_enabled,
+                cross_class_threshold=cross_class_threshold
             )
             
         except Exception as e:

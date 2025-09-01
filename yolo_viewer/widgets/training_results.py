@@ -27,6 +27,13 @@ class FileListItemWidget(QWidget):
         self.file_path = file_path
         self.tooltip_text = tooltip
         self.setup_ui(text)
+    
+    def cleanup(self):
+        """Clean up event filters before deletion."""
+        try:
+            self.removeEventFilter(self)
+        except Exception as e:
+            print(f"[DEBUG] FileListItemWidget.cleanup: Error removing event filter: {e}")
         
     def setup_ui(self, text: str):
         """Setup the UI."""
@@ -170,6 +177,14 @@ class TrainingResults(QWidget):
         self.setup_ui()
         self.setMinimumSize(800, 600)
     
+    def __del__(self):
+        """Destructor to ensure proper cleanup."""
+        try:
+            if hasattr(self, '_cleanup_file_list'):
+                self._cleanup_file_list()
+        except Exception as e:
+            print(f"[DEBUG] TrainingResults.__del__: Error during cleanup: {e}")
+    
     def setup_ui(self):
         """Setup the UI."""
         layout = QVBoxLayout(self)
@@ -304,20 +319,85 @@ class TrainingResults(QWidget):
     
     def set_output_directory(self, output_dir: Path):
         """Set the output directory and load results."""
-        self._output_dir = output_dir
-        self.refresh_results()
+        try:
+            self._output_dir = output_dir
+            # Check if widget is properly initialized
+            if not hasattr(self, 'file_list'):
+                print(f"[WARNING] TrainingResults.set_output_directory: file_list not initialized yet")
+                return
+            # Delay refresh slightly to ensure widget is ready
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(100, self.refresh_results)
+        except Exception as e:
+            print(f"[ERROR] TrainingResults.set_output_directory: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _cleanup_file_list(self):
+        """Properly clean up file list widgets before clearing."""
+        try:
+            # Check if file_list exists
+            if not hasattr(self, 'file_list') or not self.file_list:
+                return
+                
+            # Clean up all custom widgets before clearing
+            for i in range(self.file_list.count()):
+                item = self.file_list.item(i)
+                if item:
+                    widget = self.file_list.itemWidget(item)
+                    if widget and isinstance(widget, FileListItemWidget):
+                        try:
+                            widget.cleanup()
+                            self.file_list.removeItemWidget(item)
+                        except Exception as e:
+                            print(f"[DEBUG] TrainingResults._cleanup_file_list: Error cleaning widget {i}: {e}")
+            # Now safe to clear
+            self.file_list.clear()
+        except RuntimeError as e:
+            # Handle the "wrapped C/C++ object has been deleted" error
+            if "deleted" in str(e):
+                print(f"[DEBUG] TrainingResults._cleanup_file_list: Widget already deleted, skipping cleanup")
+            else:
+                print(f"[ERROR] TrainingResults._cleanup_file_list: RuntimeError during cleanup: {e}")
+        except Exception as e:
+            print(f"[ERROR] TrainingResults._cleanup_file_list: Error during cleanup: {e}")
+            import traceback
+            traceback.print_exc()
+            # Try to clear anyway
+            try:
+                if hasattr(self, 'file_list') and self.file_list:
+                    self.file_list.clear()
+            except:
+                pass
     
     def refresh_results(self):
         """Refresh the results display."""
-        if not self._output_dir or not self._output_dir.exists():
-            self.status_label.setText("No results directory set")
+        try:
+            # Safety checks
+            if not hasattr(self, 'status_label') or not hasattr(self, 'file_list'):
+                print(f"[WARNING] TrainingResults.refresh_results: Widgets not initialized")
+                return
+                
+            if not self._output_dir or not self._output_dir.exists():
+                self.status_label.setText("No results directory set")
+                return
+            
+            self.status_label.setText(f"Results from: {self._output_dir.name}")
+            
+            # Clear current content with proper cleanup
+            self._cleanup_file_list()
+            self.clear_content()
+        except RuntimeError as e:
+            if "deleted" in str(e):
+                print(f"[WARNING] TrainingResults.refresh_results: Widget was deleted, skipping refresh")
+                return
+            else:
+                raise
+        except Exception as e:
+            print(f"[ERROR] TrainingResults.refresh_results: {e}")
+            import traceback
+            traceback.print_exc()
             return
-        
-        self.status_label.setText(f"Results from: {self._output_dir.name}")
-        
-        # Clear current content
-        self.file_list.clear()
-        self.clear_content()
         
         # Find all relevant files
         files_to_show = []
@@ -402,48 +482,49 @@ class TrainingResults(QWidget):
         }
         
         # Add files to list
-        for pattern, display_name in result_patterns:
-            if '*' in pattern:
-                # Handle wildcards
-                base_pattern = pattern.replace('*', '')
-                for f in self._output_dir.glob(pattern):
-                    # Find tooltip for batch files
-                    tooltip = ""
-                    for key, tt in file_tooltips.items():
-                        if key in f.name:
-                            tooltip = tt
-                            break
-                    
-                    # Create custom widget
-                    widget = FileListItemWidget(f"🖼️ {f.name}", tooltip, f)
-                    widget.clicked.connect(lambda checked=False, p=f: self._on_file_clicked(p))
-                    
-                    # Add to list
-                    item = QListWidgetItem()
-                    item.setSizeHint(widget.sizeHint())
-                    item.setData(Qt.ItemDataRole.UserRole, f)
-                    self.file_list.addItem(item)
-                    self.file_list.setItemWidget(item, widget)
-            else:
-                file_path = self._output_dir / pattern
-                if file_path.exists():
-                    tooltip = file_tooltips.get(pattern, "")
-                    
-                    # Create custom widget
-                    widget = FileListItemWidget(display_name, tooltip, file_path)
-                    widget.clicked.connect(lambda checked=False, p=file_path: self._on_file_clicked(p))
-                    
-                    # Add to list
-                    item = QListWidgetItem()
-                    item.setSizeHint(widget.sizeHint())
-                    item.setData(Qt.ItemDataRole.UserRole, file_path)
-                    self.file_list.addItem(item)
-                    self.file_list.setItemWidget(item, widget)
-        
-        # Also check for model files
-        for pt_file in self._output_dir.glob("*.pt"):
-            # Model tooltip
-            model_tooltip = f"""<b>YOLO Model File: {pt_file.name}</b><br><br>
+        try:
+            for pattern, display_name in result_patterns:
+                if '*' in pattern:
+                    # Handle wildcards
+                    base_pattern = pattern.replace('*', '')
+                    for f in self._output_dir.glob(pattern):
+                        # Find tooltip for batch files
+                        tooltip = ""
+                        for key, tt in file_tooltips.items():
+                            if key in f.name:
+                                tooltip = tt
+                                break
+                        
+                        # Create custom widget
+                        widget = FileListItemWidget(f"🖼️ {f.name}", tooltip, f)
+                        widget.clicked.connect(lambda checked=False, p=f: self._on_file_clicked(p))
+                        
+                        # Add to list
+                        item = QListWidgetItem()
+                        item.setSizeHint(widget.sizeHint())
+                        item.setData(Qt.ItemDataRole.UserRole, f)
+                        self.file_list.addItem(item)
+                        self.file_list.setItemWidget(item, widget)
+                else:
+                    file_path = self._output_dir / pattern
+                    if file_path.exists():
+                        tooltip = file_tooltips.get(pattern, "")
+                        
+                        # Create custom widget
+                        widget = FileListItemWidget(display_name, tooltip, file_path)
+                        widget.clicked.connect(lambda checked=False, p=file_path: self._on_file_clicked(p))
+                        
+                        # Add to list
+                        item = QListWidgetItem()
+                        item.setSizeHint(widget.sizeHint())
+                        item.setData(Qt.ItemDataRole.UserRole, file_path)
+                        self.file_list.addItem(item)
+                        self.file_list.setItemWidget(item, widget)
+            
+            # Also check for model files
+            for pt_file in self._output_dir.glob("*.pt"):
+                # Model tooltip
+                model_tooltip = f"""<b>YOLO Model File: {pt_file.name}</b><br><br>
             This is a trained YOLO model checkpoint.<br><br>
             <b>Common model files:</b><br>
             • <b>best.pt</b>: Best performing model (lowest validation loss)<br>
@@ -455,16 +536,27 @@ class TrainingResults(QWidget):
             • Export to other formats (ONNX, TensorFlow, etc.)<br><br>
             Size: {pt_file.stat().st_size / (1024*1024):.1f} MB"""
             
-            # Create custom widget
-            widget = FileListItemWidget(f"🤖 {pt_file.name}", model_tooltip, pt_file)
-            widget.clicked.connect(lambda checked=False, p=pt_file: self._on_file_clicked(p))
-            
-            # Add to list
-            item = QListWidgetItem()
-            item.setSizeHint(widget.sizeHint())
-            item.setData(Qt.ItemDataRole.UserRole, pt_file)
-            self.file_list.addItem(item)
-            self.file_list.setItemWidget(item, widget)
+                # Create custom widget
+                widget = FileListItemWidget(f"🤖 {pt_file.name}", model_tooltip, pt_file)
+                widget.clicked.connect(lambda checked=False, p=pt_file: self._on_file_clicked(p))
+                
+                # Add to list
+                item = QListWidgetItem()
+                item.setSizeHint(widget.sizeHint())
+                item.setData(Qt.ItemDataRole.UserRole, pt_file)
+                self.file_list.addItem(item)
+                self.file_list.setItemWidget(item, widget)
+        except RuntimeError as e:
+            if "deleted" in str(e):
+                print(f"[WARNING] TrainingResults.refresh_results: Widget deleted during refresh")
+                return
+            else:
+                raise
+        except Exception as e:
+            print(f"[ERROR] TrainingResults.refresh_results: Error populating file list: {e}")
+            import traceback
+            traceback.print_exc()
+            return
         
         # Auto-select results.png if available
         results_png = self._output_dir / "results.png"

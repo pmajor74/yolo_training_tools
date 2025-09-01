@@ -20,14 +20,23 @@ Patrick Major
 - Application includes CPU mode detection with performance warnings.
 
 ## Version Information
-- **Current Version**: v2.1.0
+- **Current Version**: v2.2.0
 - **Application Name**: Majorsoft YOLO Dataset Viewer
 - **Framework**: PyQt6 with comprehensive UI improvements
-- **Last Updated**: August 2025
+- **Last Updated**: September 2025
 
-## Recent Updates (v2.1.0 - August 2025)
+## Recent Updates (v2.2.0 - September 2025)
 
-### Image Format Support
+### Advanced Non-Maximum Suppression (NMS) Controls
+- **Configurable NMS**: Toggle NMS on/off with adjustable IOU threshold (0.1-0.9)
+- **Cross-Class Suppression**: NEW feature to handle multi-class overlap issues
+  - Removes duplicate detections when different classes overlap significantly
+  - Keeps only the highest confidence detection regardless of class
+  - Perfect for disambiguation when objects are detected as multiple classes
+  - Configurable overlap threshold with detailed info tooltips
+- **Enhanced Detection Quality**: Both NMS features work together to produce cleaner, more accurate annotations
+
+### Image Format Support (v2.1.0)
 - **Full TIF/TIFF Support**: Complete support for TIF files throughout the application
 - **Automatic Conversion**: Non-RGB TIF files (1-bit, grayscale) automatically converted for training
 - **Smart Compression**: Optimized file sizes using ZIP/Deflate compression
@@ -95,6 +104,8 @@ The application includes comprehensive device detection and optimization:
 - **Visual Dataset Editor** - Create and modify bounding box annotations with an intuitive drawing interface
 - **Folder Browser Mode** - Browse any folder and run inference or annotate images without dataset structure
 - **Auto-Annotation System** - Leverage existing models to accelerate dataset expansion with confidence-based review
+  - Advanced NMS controls with adjustable IOU thresholds
+  - NEW: Cross-Class Suppression for multi-class overlap disambiguation
 - **Real-time Training** - Monitor training progress with live charts, metrics, and customizable augmentation
 - **Model Management** - Easy model loading and switching between different weights
 - **Dataset Splitting** - Automatically organize datasets into train/val/test sets with validation
@@ -364,6 +375,16 @@ The crown jewel for efficient dataset expansion - use existing models to annotat
 - Three-tier confidence system (High/Medium/Low)
 - Interactive annotation editing with colorblind-friendly colors
 - Batch operations with progress tracking
+- **Advanced Non-Maximum Suppression (NMS) Controls**:
+  - Configurable NMS with adjustable IOU threshold (0.1-0.9, default 0.45)
+  - Toggle NMS on/off to control same-class duplicate removal
+  - Enabled by default for cleaner detections
+- **NEW: Cross-Class Suppression**:
+  - Handles cases where objects are detected as multiple different classes
+  - Removes lower confidence detections when different classes overlap
+  - Configurable overlap threshold (0.3-0.9, default 0.5)
+  - Perfect for disambiguation (e.g., form detected as both "form8" and "form11")
+  - Disabled by default, enable when multi-class overlap is an issue
 - **Advanced Quality Control Dialog** with 12+ metrics:
   - Coverage analysis and confidence distribution
   - Class balance checking and annotation density
@@ -401,10 +422,16 @@ The reason you will use this workflow is to create a decent dataset fast, once t
    - Open the Auto-Annotation tab
    - Click on "Select folder" and select the folder \image_data that you created in the Pre-Setup step. This will be the same folder that all the annotations are deposited into as .txt files in the yolo format.
    - Click on the "Load Dataset" button and load the dataset data.yaml you created in the Pre-Setup
+   - **Configure NMS Settings** (Optional):
+     - NMS is enabled by default with IOU threshold 0.45
+     - Adjust IOU threshold if needed (lower = more aggressive filtering)
+     - Enable Cross-Class Suppression if objects are detected as multiple classes
+     - Set overlap threshold for cross-class (0.5 recommended)
 
 2. **Automatic Processing**:
    - Click "Start Auto-Annotation" to begin
-   - Model runs inference on all images
+   - Model runs inference on all images with NMS applied
+   - Cross-Class Suppression removes duplicate multi-class detections if enabled
    - Detections are categorized by confidence
    - Progress shown in real-time
 
