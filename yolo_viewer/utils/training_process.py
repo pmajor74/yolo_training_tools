@@ -282,11 +282,8 @@ if __name__ == '__main__':
         
         # Process stderr output intelligently
         # YOLO sends progress bars to stderr with \r characters
-        # We need to filter these out to avoid console spam
-        
-        # Track last progress line to avoid duplicates
-        if not hasattr(self, '_last_progress_line'):
-            self._last_progress_line = ""
+        # We're now showing all progress updates for better debugging visibility
+        # This provides real-time feedback on training progress
         
         # Split by both \n and \r to handle progress bars
         lines = text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
@@ -305,28 +302,12 @@ if __name__ == '__main__':
             elif '%|' in line and 'it/s' in line:
                 is_progress_bar = True
                 
-            # For progress bars, check if it's significantly different from last one
+            # For progress bars, show everything for debugging
             if is_progress_bar:
-                # Extract the core content (epoch number and percentage if present)
-                import re
-                epoch_match = re.search(r'(\d+)/(\d+)', line)
-                percent_match = re.search(r'(\d+)%', line)
-                
-                # Create a signature for this progress line
-                signature = ""
-                if epoch_match:
-                    signature += f"{epoch_match.group(1)}/{epoch_match.group(2)}"
-                if percent_match:
-                    signature += f"_{percent_match.group(1)}%"
-                    
-                # Only show if it's a new epoch or 100% complete or significantly different
-                if signature != self._last_progress_line:
-                    if '100%' in line or (epoch_match and percent_match and int(percent_match.group(1)) % 20 == 0):
-                        # Show major milestones (every 20% and 100%)
-                        print(f"[PROGRESS] {line}")
-                        self.logMessage.emit(line)
-                        self._parse_output(line)
-                        self._last_progress_line = signature
+                # Always show all progress bar updates without any filtering
+                print(f"[PROGRESS] {line}")
+                self.logMessage.emit(line)
+                self._parse_output(line)
                 continue
             
             # Not a progress bar - check if it's an important message

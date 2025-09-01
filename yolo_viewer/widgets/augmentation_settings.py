@@ -44,7 +44,7 @@ class AugmentationSettings(QWidget):
         
         # Augmentation parameters with tooltips
         augment_params = [
-            ("Degrees", "degrees", 0, 180, 45.0, "Image rotation range (+/- degrees)\nRotates images randomly within this range"),
+            ("Degrees", "degrees", 0, 180, 15.0, "Image rotation range (+/- degrees)\nRotates images randomly within this range"),
             ("Translate", "translate", 0.0, 0.9, 0.1, "Image translation (+/- fraction)\nShifts images horizontally and vertically by fraction of image size"),
             ("Scale", "scale", 0.0, 0.9, 0.5, "Image scale (+/- gain)\nScales images up or down by this factor"),
             ("Shear", "shear", 0.0, 10.0, 0.0, "Image shear (+/- degrees)\nApplies shear transformation to images"),

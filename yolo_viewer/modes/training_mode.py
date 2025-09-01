@@ -585,10 +585,48 @@ class TrainingMode(BaseMode):
                 )
                 return
             
-            # Create output directory first
+            # Create output directory with training parameters in name
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                self._output_dir = Path("runs/train") / f"train_{timestamp}"
+                
+                # Get training parameters for folder name
+                epochs = self.epochs_spin.value()
+                batch_size = self.batch_spin.value()
+                img_size = self.imgsz_combo.currentText()
+                
+                # Get model name (simplified)
+                model_cache = ModelCache()
+                if self.pretrained_check.isChecked():
+                    model_name = self.model_combo.currentText().replace('.pt', '').replace('yolov8', 'v8')
+                elif model_cache.model_path:
+                    # Extract just the model file name without path and extension
+                    model_path = Path(model_cache.model_path)
+                    model_name = model_path.stem
+                    
+                    # If it's from a previous training run, try to extract the original model name
+                    if 'train_' in str(model_path.parent) and model_name in ['best', 'last']:
+                        # Try to extract model from parent folder name
+                        parent_name = model_path.parent.parent.name
+                        if '_v8' in parent_name:
+                            # Extract the model part (e.g., "v8n" from "train_..._v8n_e...")
+                            parts = parent_name.split('_')
+                            for part in parts:
+                                if part.startswith('v8'):
+                                    model_name = part
+                                    break
+                        else:
+                            # Use 'best' or 'last' as is
+                            pass
+                    
+                    # Shorten long model names
+                    if len(model_name) > 15:
+                        model_name = model_name[:15]
+                else:
+                    model_name = self.model_combo.currentText().replace('.pt', '').replace('yolov8', 'v8')
+                
+                # Create descriptive folder name with key parameters
+                folder_name = f"train_{timestamp}_{model_name}_e{epochs}_b{batch_size}_s{img_size}"
+                self._output_dir = Path("runs/train") / folder_name
                 self._output_dir.mkdir(parents=True, exist_ok=True)
                 print(f"[INFO] TrainingMode._start_training: Created output directory: {self._output_dir}")
             except Exception as e:
@@ -618,6 +656,33 @@ class TrainingMode(BaseMode):
                 with open(config_path, 'w') as f:
                     yaml.dump(config, f)
                 print(f"[INFO] TrainingMode._start_training: Saved configuration to: {config_path}")
+                
+                # Also save a human-readable training info file
+                info_path = self._output_dir / "training_info.txt"
+                with open(info_path, 'w') as f:
+                    f.write("=" * 60 + "\n")
+                    f.write("YOLO Training Session Information\n")
+                    f.write("=" * 60 + "\n\n")
+                    f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"Base Model: {config['model']}\n")
+                    f.write(f"Dataset: {self._dataset_path.name}\n")
+                    f.write(f"Epochs: {config['epochs']}\n")
+                    f.write(f"Batch Size: {config['batch']}\n")
+                    f.write(f"Image Size: {config['imgsz']}\n")
+                    f.write(f"Learning Rate: {config['lr0']}\n")
+                    f.write(f"Device: {config['device']}\n")
+                    f.write(f"Augmentation: {'Enabled' if config['augment'] else 'Disabled'}\n")
+                    f.write(f"Cache: {'Enabled' if config['cache'] else 'Disabled'}\n")
+                    f.write(f"Pre-trained: {'Yes' if config['pretrained'] else 'No'}\n")
+                    f.write(f"Training Images: {self._num_train_images}\n")
+                    f.write("\n" + "=" * 60 + "\n")
+                    f.write("Output Directory Structure:\n")
+                    f.write("- weights/: Model checkpoints (best.pt, last.pt)\n")
+                    f.write("- plots/: Training metrics and visualizations\n")
+                    f.write("- training_config.yaml: Full configuration\n")
+                    f.write("- training_info.txt: This file\n")
+                    f.write("=" * 60 + "\n")
+                print(f"[INFO] TrainingMode._start_training: Saved training info to: {info_path}")
             except Exception as e:
                 print(f"[ERROR] TrainingMode._start_training: Failed to save configuration")
                 print(f"[ERROR] TrainingMode._start_training: Exception: {type(e).__name__}: {e}")
