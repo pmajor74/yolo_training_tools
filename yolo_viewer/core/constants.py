@@ -64,6 +64,8 @@ class AppMode(Enum):
     AUTO_ANNOTATION = auto()
     MODEL_MANAGEMENT = auto()
     DATASET_SPLIT = auto()
+    HYPERPARAMETER_TUNING = auto()
+    BENCHMARKING = auto()
 
 # Mode display names
 MODE_NAMES = {
@@ -72,7 +74,9 @@ MODE_NAMES = {
     AppMode.TRAINING: "Training",
     AppMode.AUTO_ANNOTATION: "Auto-Annotation",
     AppMode.MODEL_MANAGEMENT: "Model Management",
-    AppMode.DATASET_SPLIT: "Dataset Split"
+    AppMode.DATASET_SPLIT: "Dataset Split",
+    AppMode.HYPERPARAMETER_TUNING: "Hyper Param Tuning",
+    AppMode.BENCHMARKING: "Benchmarking"
 }
 
 # Training presets

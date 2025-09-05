@@ -24,6 +24,8 @@ from .modes.model_management import ModelManagementMode
 from .modes.training_mode import TrainingMode
 from .modes.auto_annotation_mode import AutoAnnotationMode
 from .modes.dataset_split_mode import DatasetSplitMode
+from .modes.hyperparameter_tuning_mode import HyperparameterTuningMode
+from .modes.benchmarking_mode import BenchmarkingMode
 from .widgets.device_status_widget import DeviceStatusWidget
 from .utils.combobox_fixer import fix_all_comboboxes_in_widget
 from .dialogs import OptionsDialog
@@ -360,6 +362,50 @@ class MainApplication(QMainWindow):
         )
         dataset_split_mode.splitCompleted.connect(
             lambda path: self.statusbar.showMessage(f"Dataset split completed: {Path(path).name}", 5000)
+        )
+        
+        # Create Hyperparameter Tuning mode
+        hyperparameter_tuning_mode = HyperparameterTuningMode()
+        self.tab_widget.addTab(hyperparameter_tuning_mode, MODE_NAMES[AppMode.HYPERPARAMETER_TUNING])
+        self.mode_widgets[AppMode.HYPERPARAMETER_TUNING] = hyperparameter_tuning_mode
+        
+        # Connect Hyperparameter Tuning mode signals
+        hyperparameter_tuning_mode.statusMessage.connect(
+            lambda msg, timeout: self.statusbar.showMessage(msg, timeout)
+        )
+        hyperparameter_tuning_mode.tuningStarted.connect(
+            lambda config: (
+                self.statusbar.showMessage("Hyperparameter tuning started", 3000),
+                self.device_status_widget.refresh()
+            )
+        )
+        hyperparameter_tuning_mode.tuningCompleted.connect(
+            lambda results_path: self.statusbar.showMessage(f"Tuning completed: {Path(results_path).name}", 5000)
+        )
+        hyperparameter_tuning_mode.tuningFailed.connect(
+            lambda error: self.statusbar.showMessage(f"Tuning failed: {error}", 5000)
+        )
+        
+        # Create Benchmarking mode
+        benchmarking_mode = BenchmarkingMode()
+        self.tab_widget.addTab(benchmarking_mode, MODE_NAMES[AppMode.BENCHMARKING])
+        self.mode_widgets[AppMode.BENCHMARKING] = benchmarking_mode
+        
+        # Connect Benchmarking mode signals
+        benchmarking_mode.statusMessage.connect(
+            lambda msg, timeout: self.statusbar.showMessage(msg, timeout)
+        )
+        benchmarking_mode.benchmarkStarted.connect(
+            lambda model: (
+                self.statusbar.showMessage("Benchmark evaluation started", 3000),
+                self.device_status_widget.refresh()
+            )
+        )
+        benchmarking_mode.benchmarkCompleted.connect(
+            lambda report_path: self.statusbar.showMessage(f"Benchmark complete: {Path(report_path).name}", 5000)
+        )
+        benchmarking_mode.benchmarkFailed.connect(
+            lambda error: self.statusbar.showMessage(f"Benchmark failed: {error}", 5000)
         )
         
         # Create placeholder tab for remaining modes (if any)

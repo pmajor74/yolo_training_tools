@@ -197,6 +197,14 @@ class TrainingMode(BaseMode):
         self.stop_btn.setEnabled(False)
         self.stop_btn.setMaximumWidth(140)
         controls_layout.addWidget(self.stop_btn)
+        
+        # Import hyperparameters button
+        self.import_params_btn = QPushButton("Import Params")
+        self.import_params_btn.clicked.connect(self._import_hyperparameters)
+        self.import_params_btn.setMaximumWidth(120)
+        self.import_params_btn.setToolTip("Import hyperparameters from tuning results")
+        controls_layout.addWidget(self.import_params_btn)
+        
         controls_layout.addStretch()
         
         params_layout.addLayout(controls_layout)
@@ -1217,7 +1225,101 @@ class TrainingMode(BaseMode):
                 # Try to count training images
                 self._count_training_images()
     
-    @pyqtSlot(str)
+    def _import_hyperparameters(self):
+        """Import hyperparameters from a YAML file."""
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(
+            self,
+            "Import Hyperparameters",
+            "",
+            "YAML Files (*.yaml *.yml)"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            with open(file_path, 'r') as f:
+                params = yaml.safe_load(f)
+                
+            if not params:
+                QMessageBox.warning(self, "Invalid File", "The selected file does not contain valid parameters")
+                return
+                
+            # Map parameters to UI controls
+            imported_params = []
+            
+            # Learning rate
+            if 'lr0' in params:
+                self.lr_spin.setValue(float(params['lr0']))
+                imported_params.append(f"Learning Rate: {params['lr0']}")
+                
+            # Epochs
+            if 'epochs' in params:
+                self.epochs_spin.setValue(int(params['epochs']))
+                imported_params.append(f"Epochs: {params['epochs']}")
+                
+            # Batch size
+            if 'batch' in params:
+                self.batch_spin.setValue(int(params['batch']))
+                imported_params.append(f"Batch Size: {params['batch']}")
+                
+            # Image size
+            if 'imgsz' in params:
+                # Find or add the image size to combo
+                img_size_str = str(params['imgsz'])
+                index = self.imgsz_combo.findText(img_size_str)
+                if index >= 0:
+                    self.imgsz_combo.setCurrentIndex(index)
+                else:
+                    # Add custom size if not in list
+                    self.imgsz_combo.addItem(img_size_str)
+                    self.imgsz_combo.setCurrentText(img_size_str)
+                imported_params.append(f"Image Size: {params['imgsz']}")
+                
+            # Patience
+            if 'patience' in params:
+                self.patience_spin.setValue(int(params['patience']))
+                imported_params.append(f"Patience: {params['patience']}")
+                
+            # Additional hyperparameters that don't have UI controls yet
+            extra_params = []
+            for key in ['optimizer', 'momentum', 'weight_decay', 'warmup_epochs', 'box', 'cls', 'dfl', 'lrf']:
+                if key in params:
+                    extra_params.append(f"{key}: {params[key]}")
+                    
+            # Log import results
+            self._log("=" * 40)
+            self._log("Imported Hyperparameters:")
+            for param in imported_params:
+                self._log(f"  {param}")
+                
+            if extra_params:
+                self._log("\nAdditional parameters found (not yet supported in UI):")
+                for param in extra_params:
+                    self._log(f"  {param}")
+                    
+            self._log("=" * 40)
+            
+            # Show success message
+            message = f"Successfully imported {len(imported_params)} parameters"
+            if extra_params:
+                message += f"\n\nNote: {len(extra_params)} additional parameters were found but are not yet supported in the UI"
+                
+            QMessageBox.information(
+                self,
+                "Import Successful",
+                message
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Import Error",
+                f"Failed to import hyperparameters:\n{str(e)}"
+            )
+            print(f"[ERROR] Failed to import hyperparameters: {e}")
+    
     def _on_training_stopped(self, message: str):
         """Handle training stopped by user."""
         self._is_training = False
