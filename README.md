@@ -20,10 +20,42 @@ Patrick Major
 - Application includes CPU mode detection with performance warnings.
 
 ## Version Information
-- **Current Version**: v2.2.0
+- **Current Version**: v2.3.0
 - **Application Name**: Majorsoft YOLO Dataset Viewer
 - **Framework**: PyQt6 with comprehensive UI improvements
-- **Last Updated**: September 2025
+- **Last Updated**: December 2025
+
+## Recent Updates (v2.3.0 - December 2025)
+
+### New Advanced Modes
+
+#### Hyperparameter Tuning Mode
+- **Automated Optimization**: Systematically search for optimal training hyperparameters
+- **Configurable Search Space**: Define ranges for learning rate, momentum, weight decay, and loss weights
+- **Multiple Search Strategies**:
+  - Grid Search: Exhaustive search through all combinations
+  - Random Search: Efficient sampling of parameter space
+  - Bayesian Optimization: Smart search using past results to guide future trials
+- **Preset Configurations**: Quick, Standard, and Comprehensive tuning presets
+- **Real-time Monitoring**: Track progress of each trial with live metrics
+- **Result Analysis**: 
+  - Automatic identification of best parameters
+  - Visual comparison charts
+  - Export results to CSV/JSON for further analysis
+- **Parallel Trials**: Support for running multiple experiments simultaneously (GPU permitting)
+
+#### Benchmarking Mode
+- **Comprehensive Model Evaluation**: Evaluate model performance against test datasets
+- **Advanced Metrics Calculation**:
+  - Precision, Recall, F1-Score per class
+  - mAP@0.5 and mAP@0.5:0.95
+  - Confusion matrices
+  - Detection speed analysis (FPS)
+- **Comparative Analysis**: Compare multiple models side-by-side
+- **Detailed Reports**: Generate HTML reports with interactive visualizations
+- **Error Analysis**: Identify common failure modes and edge cases
+- **Class-wise Performance**: Detailed breakdown of performance per object class
+- **Export Options**: Save results as HTML, CSV, or JSON for documentation
 
 ## Recent Updates (v2.2.0 - September 2025)
 
@@ -107,6 +139,12 @@ The application includes comprehensive device detection and optimization:
   - Advanced NMS controls with adjustable IOU thresholds
   - NEW: Cross-Class Suppression for multi-class overlap disambiguation
 - **Real-time Training** - Monitor training progress with live charts, metrics, and customizable augmentation
+- **Hyperparameter Tuning** - Automated search for optimal training parameters with multiple search strategies
+  - Grid, Random, and Bayesian optimization methods
+  - Real-time progress monitoring and result comparison
+- **Benchmarking & Evaluation** - Comprehensive model performance analysis
+  - Detailed metrics calculation (mAP, Precision, Recall, F1)
+  - Multi-model comparison and HTML report generation
 - **Model Management** - Easy model loading and switching between different weights
 - **Dataset Splitting** - Automatically organize datasets into train/val/test sets with validation
 - **Advanced Theme System** - 21 professional themes including:
@@ -122,6 +160,9 @@ The application includes comprehensive device detection and optimization:
 - **Preserved View Navigation** - Maintain zoom and pan settings when browsing through datasets
 - **Advanced Sorting & Filtering** - Sort image galleries by filename, date, size, or detection metrics with ascending/descending options
 - **Smart Detection Filters** - Auto-annotation mode includes filters for minimum detections and class counts per image
+- **Hyperparameter Search Space** - Define custom ranges for all training parameters or use intelligent presets
+- **Trial History Tracking** - Keep complete records of all tuning experiments with automatic result logging
+- **Performance Benchmarking** - Test models against real-world datasets with comprehensive metrics
 
 ## 📋 Table of Contents
 
@@ -132,7 +173,9 @@ The application includes comprehensive device detection and optimization:
   - [Model Management](#model-management)
   - [Dataset Editor](#dataset-editor)
   - [Folder Browser Mode](#folder-browser-mode)
-  - [Training Mode](#training-mode)  
+  - [Training Mode](#training-mode)
+  - [Hyperparameter Tuning Mode](#hyperparameter-tuning-mode)
+  - [Benchmarking Mode](#benchmarking-mode)
   - [Dataset Split Mode](#dataset-split-mode)
 - [Keyboard Shortcuts](#-keyboard-shortcuts)
 - [Dataset Structure](#-dataset-structure)
@@ -199,7 +242,7 @@ The application will automatically detect and display your GPU in the status bar
 python Yolo_TrainerTools.py
 ```
 
-2. The application opens with six tabs. Start with **Model Management** to load a model, or begin creating a dataset in **Dataset Editor**.
+2. The application opens with eight tabs. Start with **Model Management** to load a model, or begin creating a dataset in **Dataset Editor**.
 
 3. For your first project:
    - Create a new dataset in Dataset Editor
@@ -444,6 +487,94 @@ The reason you will use this workflow is to create a decent dataset fast, once t
    - Once the training is done, the new model will be loaded and the images that have no annotations in the \image_data folder will have inferrance against them using the new model
    - Do the process again until you have all your images annotated.
 
+### Hyperparameter Tuning Mode
+
+Automatically find the best training parameters for your specific dataset through systematic experimentation.
+
+**Key Features:**
+- **Multiple Search Strategies**:
+  - **Grid Search**: Exhaustively test all parameter combinations
+  - **Random Search**: Efficiently sample the parameter space
+  - **Bayesian Optimization**: Smart search that learns from previous trials
+- **Configurable Parameter Ranges**:
+  - Learning rate (initial and final)
+  - Momentum and weight decay
+  - Loss function weights (box, class, DFL)
+  - Warmup epochs and other advanced settings
+- **Preset Configurations**:
+  - **Quick**: 5-10 trials for rapid testing
+  - **Standard**: 20-30 trials for balanced search
+  - **Comprehensive**: 50+ trials for thorough optimization
+  - **Custom**: Define your own search space
+- **Real-time Monitoring**:
+  - Live progress tracking for each trial
+  - Comparative metrics display
+  - Early stopping for poor-performing trials
+- **Result Analysis**:
+  - Automatic identification of best parameters
+  - Interactive comparison charts
+  - Export to CSV/JSON for documentation
+
+**How to Use:**
+1. Load your dataset and select a base model
+2. Choose search strategy (Grid, Random, or Bayesian)
+3. Select preset or configure custom parameter ranges
+4. Set number of trials and epochs per trial
+5. Click "Start Tuning" and monitor progress
+6. Review results and export best parameters
+7. Use optimal parameters for final training
+
+**Tips for Effective Tuning:**
+- Start with Quick preset to understand parameter sensitivity
+- Use Random search for large parameter spaces
+- Save GPU resources by using fewer epochs per trial (10-25)
+- Focus on parameters that matter most for your dataset
+
+### Benchmarking Mode
+
+Comprehensive evaluation and comparison of trained models against test datasets.
+
+**Key Features:**
+- **Detailed Performance Metrics**:
+  - Precision, Recall, and F1-Score per class
+  - mAP@0.5 and mAP@0.5:0.95
+  - Confusion matrices for error analysis
+  - Detection speed (FPS) on your hardware
+  - Class-wise performance breakdown
+- **Model Comparison**:
+  - Side-by-side evaluation of multiple models
+  - Comparative charts and tables
+  - Identify strengths and weaknesses of each model
+- **Error Analysis**:
+  - Common failure modes identification
+  - False positive/negative analysis
+  - Edge case detection
+  - Size and aspect ratio performance
+- **Report Generation**:
+  - Interactive HTML reports with charts
+  - CSV export for spreadsheet analysis
+  - JSON export for programmatic access
+  - Shareable benchmark summaries
+
+**How to Use:**
+1. Select test dataset (should not overlap with training data)
+2. Load model(s) to evaluate
+3. Configure evaluation parameters:
+   - Confidence threshold
+   - IOU threshold for matching
+   - NMS settings
+4. Click "Run Benchmark"
+5. Review detailed metrics and visualizations
+6. Export report in desired format
+
+**Benchmark Report Includes:**
+- Overall model performance summary
+- Per-class precision/recall curves
+- Confusion matrix visualization
+- Detection examples (best/worst cases)
+- Speed and efficiency metrics
+- Recommendations for improvement
+
 ### Dataset Split Mode
 
 Organize datasets into proper train/validation/test splits with automatic validation and error handling.
@@ -599,10 +730,27 @@ names:
    - Train for more epochs
    - Compare metrics with baseline
 
-6. **Iterate**
-   - Repeat steps 3-5 until desired accuracy
+6. **Hyperparameter Optimization** (NEW - Hyperparameter Tuning Mode)
+   - Use expanded dataset for tuning
+   - Run systematic parameter search
+   - Identify optimal training configuration
+   - Document best parameters for reproducibility
+
+7. **Final Training with Optimal Parameters**
+   - Apply tuned hyperparameters
+   - Train final production model
+   - Use full dataset and more epochs
+
+8. **Performance Validation** (NEW - Benchmarking Mode)
+   - Evaluate final model on test set
+   - Generate comprehensive performance report
+   - Compare with baseline models
+   - Document metrics for deployment decision
+
+9. **Iterate**
+   - Repeat steps 3-8 until desired accuracy
    - Each iteration improves model performance
-   - Focus on edge cases and errors
+   - Focus on edge cases and errors identified in benchmarking
 
 ### Auto-Annotation Workflow
 
@@ -646,6 +794,51 @@ Retrain Improved Model
 - Ensure balanced dataset composition
 - Track approval/rejection rates
 - Document common error patterns
+
+### Model Optimization Workflow
+
+A systematic approach to achieving maximum model performance using the new advanced features:
+
+```
+Initial Training → Hyperparameter Tuning → Optimized Training → Benchmarking → Deployment
+```
+
+**Step-by-Step Process:**
+
+1. **Baseline Model** (Training Mode)
+   - Train with default parameters
+   - Establish baseline metrics
+   - Identify initial weaknesses
+
+2. **Parameter Search** (Hyperparameter Tuning Mode)
+   - Start with Quick preset (5-10 trials)
+   - Focus on learning rate and momentum first
+   - Progress to Standard preset if time permits
+   - Document parameter sensitivity
+
+3. **Optimized Training** (Training Mode)
+   - Apply best parameters from tuning
+   - Train for more epochs (100-300)
+   - Use larger model architecture if needed
+   - Enable advanced augmentations
+
+4. **Performance Validation** (Benchmarking Mode)
+   - Test on held-out dataset
+   - Generate detailed metrics report
+   - Analyze failure modes
+   - Compare with baseline
+
+5. **Iterative Refinement**
+   - Address weak classes with more data
+   - Fine-tune on specific failure cases
+   - Re-benchmark after improvements
+
+**Optimization Best Practices:**
+- Always use a separate test set for benchmarking
+- Save all tuning results for future reference
+- Start with smaller models for faster experimentation
+- Document which parameters had the most impact
+- Use benchmarking reports to guide data collection
 
 ## 💡 Tips and Best Practices
 
