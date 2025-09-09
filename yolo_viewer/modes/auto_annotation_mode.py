@@ -413,20 +413,25 @@ class AutoAnnotationMode(BaseMode):
         # Reset filters and categories for new session
         self._detected_categories.clear()
         self._selected_category_filters.clear()
-        self._current_filter = ConfidenceCategory.REQUIRES_REVIEW  # Set default filter
+        self._current_filter = None  # Don't set a default filter yet - wait until after inference
         self._filter_approved_btn.setChecked(False)
-        self._filter_review_btn.setChecked(True)
+        self._filter_review_btn.setChecked(False)  # Don't pre-select Review
         self._filter_rejected_btn.setChecked(False)
         self._filter_no_detections_btn.setChecked(False)
         
-        # Populate category filter with all dataset classes
+        # Populate category filter with all dataset classes or model classes
         if self._dataset_class_names:
             self._populate_category_filter()
         else:
-            # Clear category filter if no dataset loaded
-            while self._category_list_widget.count() > 3:
-                self._category_list_widget.takeItem(3)
-            self._category_filter_combo.setCurrentText("All categories")
+            # Try to load class names from model if no dataset
+            self._load_class_names_from_model()
+            if self._dataset_class_names:  # If we got class names from model
+                self._populate_category_filter()
+            else:
+                # Clear category filter if no classes available
+                while self._category_list_widget.count() > 3:
+                    self._category_list_widget.takeItem(3)
+                self._category_filter_combo.setCurrentText("All categories")
         
         # Get settings
         include_annotated = self._include_annotated_checkbox.isChecked()
@@ -465,6 +470,7 @@ class AutoAnnotationMode(BaseMode):
         
     def _filter_by_category(self, category: Optional[ConfidenceCategory]):
         """Filter gallery by confidence category."""
+        
         # Update button states
         self._filter_approved_btn.setChecked(category == ConfidenceCategory.AUTO_APPROVED)
         self._filter_review_btn.setChecked(category == ConfidenceCategory.REQUIRES_REVIEW)
@@ -974,9 +980,33 @@ class AutoAnnotationMode(BaseMode):
         if not any(self._image_processor.annotation_categories.values()):
             self._image_processor.categorize_images()
         
-        # Apply the default filter (requires review)
-        # Set the filter even if there are no images in that category
-        self._filter_by_category(ConfidenceCategory.REQUIRES_REVIEW)
+        # Determine which filter to apply based on available categories
+        # Priority: REQUIRES_REVIEW > AUTO_APPROVED > NO_DETECTIONS > REJECTED
+        default_category = None
+        if self._image_processor.annotation_categories[ConfidenceCategory.REQUIRES_REVIEW]:
+            default_category = ConfidenceCategory.REQUIRES_REVIEW
+            category_name = "Review"
+        elif self._image_processor.annotation_categories[ConfidenceCategory.AUTO_APPROVED]:
+            default_category = ConfidenceCategory.AUTO_APPROVED
+            category_name = "Auto-Approved"
+        elif self._image_processor.annotation_categories[ConfidenceCategory.NO_DETECTIONS]:
+            default_category = ConfidenceCategory.NO_DETECTIONS
+            category_name = "No Detections"
+        elif self._image_processor.annotation_categories[ConfidenceCategory.REJECTED]:
+            default_category = ConfidenceCategory.REJECTED
+            category_name = "Rejected"
+        else:
+            # No images in any category - show all
+            default_category = None
+            category_name = "All"
+        
+        # Apply the filter
+        if default_category is not None:
+            self._filter_by_category(default_category)
+        else:
+            # Show all images without filter
+            self._current_filter = None
+            self._reload_gallery_with_filter()
         
         # Enable refresh thresholds button
         self._refresh_thresholds_btn.setEnabled(True)
@@ -985,17 +1015,21 @@ class AutoAnnotationMode(BaseMode):
         
         # Show dialog to notify user
         if self._workflow_enabled:
-            QMessageBox.information(self, "Auto-Annotation Complete", 
-                                  "Auto-annotation is complete. Please review the proposed annotations.\n\n"
-                                  "The 'Review' category has been selected for you.")
+            if default_category == ConfidenceCategory.REQUIRES_REVIEW:
+                QMessageBox.information(self, "Auto-Annotation Complete", 
+                                      "Auto-annotation is complete. Please review the proposed annotations.\n\n"
+                                      f"The '{category_name}' category has been selected for you.")
+            else:
+                QMessageBox.information(self, "Auto-Annotation Complete", 
+                                      f"Auto-annotation is complete.\n\n"
+                                      f"The '{category_name}' category has been selected.\n"
+                                      f"Note: No images require review at current confidence thresholds.")
         else:
-            # Even without workflow, show a simple notification
+            # Without workflow, show a simple notification
             QMessageBox.information(self, "Auto-Annotation Complete", 
-                                  "Auto-annotation is complete. The 'Review' category has been selected.")
+                                  f"Auto-annotation is complete. The '{category_name}' category has been selected.")
             
-        # Ensure the Review filter is properly applied after the dialog
-        # This is important in case the dialog or any other action reset the filter
-        self._filter_by_category(ConfidenceCategory.REQUIRES_REVIEW)
+        # Don't re-apply the filter after the dialog (it's already applied above)
         
     @pyqtSlot(SessionStats)
     def _on_stats_updated(self, stats: SessionStats):
@@ -1262,9 +1296,7 @@ class AutoAnnotationMode(BaseMode):
                     if detected.intersection(self._selected_category_filters):
                         final_paths.append(path)
                 filtered_paths = final_paths
-            else:
-                # No categories selected (and not viewing NO_DETECTIONS) = show no images
-                filtered_paths = []
+            # If no categories are selected, show all images (don't filter by category)
         
         # Build annotations dict for sorting/filtering - always needed for detection filters
         annotations_dict = {}
@@ -1315,7 +1347,7 @@ class AutoAnnotationMode(BaseMode):
             [(path, {}) for path in filtered_paths], annotations_dict
         )
         sorted_paths = [path for path, _ in sorted_data]
-            
+        
         # Load filtered and sorted images to gallery  
         self._gallery.load_images(sorted_paths, annotations_dict)
         
@@ -1425,9 +1457,9 @@ class AutoAnnotationMode(BaseMode):
             # Reset filters and categories for new session
             self._detected_categories.clear()
             self._selected_category_filters.clear()
-            self._current_filter = ConfidenceCategory.REQUIRES_REVIEW
+            self._current_filter = None  # Don't set a default filter yet - wait until after inference
             self._filter_approved_btn.setChecked(False)
-            self._filter_review_btn.setChecked(True)
+            self._filter_review_btn.setChecked(False)  # Don't pre-select Review
             self._filter_rejected_btn.setChecked(False)
             self._filter_no_detections_btn.setChecked(False)
             
@@ -1506,23 +1538,36 @@ class AutoAnnotationMode(BaseMode):
         # Use all classes from dataset, not just detected ones
         if self._dataset_class_names:
             # Add all dataset classes
-            for class_id in sorted(self._dataset_class_names.keys()):
-                class_name = self._dataset_class_names[class_id]
+            for class_id_str in sorted(self._dataset_class_names.keys()):
+                class_name = self._dataset_class_names[class_id_str]
                 
-                # Count images with this class (from detections)
-                count = sum(1 for classes in self._detected_categories.values() if class_id in classes)
+                # Convert string key to int for consistency
+                try:
+                    class_id_int = int(class_id_str)
+                except (ValueError, TypeError):
+                    class_id_int = class_id_str
+                
+                # Count images with this class (from detections)  
+                count = sum(1 for classes in self._detected_categories.values() if class_id_int in classes)
                 
                 item = QListWidgetItem(f"{class_name} ({count})")
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(Qt.CheckState.Checked)  # Default to checked
-                item.setData(Qt.ItemDataRole.UserRole, class_id)
+                item.setData(Qt.ItemDataRole.UserRole, class_id_int)  # Store as int
                 self._category_list_widget.addItem(item)
                 
             # Update combo text
             self._update_category_filter_text()
             
             # Initialize selected categories (all classes checked by default)
-            self._selected_category_filters = set(self._dataset_class_names.keys())
+            # Convert string keys to integers for proper matching
+            self._selected_category_filters = set()
+            for key in self._dataset_class_names.keys():
+                try:
+                    self._selected_category_filters.add(int(key))
+                except (ValueError, TypeError):
+                    # If key is not convertible to int, keep as is
+                    self._selected_category_filters.add(key)
         else:
             # No dataset loaded - use detected classes as fallback
             all_classes = set()
@@ -1548,6 +1593,9 @@ class AutoAnnotationMode(BaseMode):
             # Initialize selected categories (all checked by default)
             if all_classes:
                 self._selected_category_filters = all_classes.copy()
+            else:
+                # No classes detected at all - clear filters to show all images
+                self._selected_category_filters.clear()
         
     def _apply_category_filter(self, preserve_selection=False):
         """Apply the selected category filters.

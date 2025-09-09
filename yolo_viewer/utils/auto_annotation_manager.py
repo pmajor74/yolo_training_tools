@@ -274,7 +274,7 @@ class InferenceWorker(QThread):
                     break
                     
                 # Run inference with optional augmentation and NMS settings
-                inference_kwargs = {}
+                inference_kwargs = {'verbose': False}  # Suppress YOLO output messages
                 if self.augment:
                     inference_kwargs['augment'] = True
                     inference_kwargs.update(self.augment_settings)

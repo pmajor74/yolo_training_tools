@@ -142,7 +142,7 @@ class InferenceThread(QThread):
                 
                 try:
                     # Run inference (model already on GPU/CPU from ModelCache)
-                    results = self.model(inference_path, conf=0.01)  # Low conf to get all detections
+                    results = self.model(inference_path, conf=0.01, verbose=False)  # Low conf to get all detections
                 finally:
                     # Clean up temporary file if created
                     if inference_path != str(img_path) and os.path.exists(inference_path):
